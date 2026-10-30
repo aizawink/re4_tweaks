@@ -11,6 +11,8 @@
 #include "UI_Utility.h"
 #include "Trainer.h"
 #include "ChaosMath.h"
+#include "ChaosCore.h"
+#include "Chaos.h"
 #include <DirectXMath.h>
 
 int flagCategory = 0; // Flag editor category, matches with CategoryInfoIdx enum in Trainer.h
@@ -862,10 +864,12 @@ void Trainer_Init()
 				// Get pointer to cEm
 				cEm* Em_ptr = (cEm*)(regs.eax);
 
-				if (re4t::cfg->bTrainerEnemyHPMultiplier && IsEnemy(Em_ptr->id_100))
+				if ((re4t::cfg->bTrainerEnemyHPMultiplier || (re4t::cfg->bChaosEnabled && re4t::cfg->bChaosThickHP)) && IsEnemy(Em_ptr->id_100))
 				{
 					float multi = 0.0f;
-					if (re4t::cfg->bTrainerRandomHPMultiplier)
+					if (re4t::cfg->bChaosEnabled && re4t::cfg->bChaosThickHP)
+						multi = aiza::Bound(re4t::cfg->fChaosHPMultiplier, 0.1f, 15.0f, 5.0f);
+					else if (re4t::cfg->bTrainerRandomHPMultiplier)
 						multi = GetRandomFloat(re4t::cfg->fTrainerRandomHPMultiMin, re4t::cfg->fTrainerRandomHPMultiMax);
 					else
 						multi = re4t::cfg->fTrainerEnemyHPMultiplier;
@@ -887,10 +891,12 @@ void Trainer_Init()
 				// Get pointer to cEm
 				cEm* Em_ptr = (cEm*)(regs.esi);
 
-				if (re4t::cfg->bTrainerEnemyHPMultiplier && IsEnemy(Em_ptr->id_100))
+				if ((re4t::cfg->bTrainerEnemyHPMultiplier || (re4t::cfg->bChaosEnabled && re4t::cfg->bChaosThickHP)) && IsEnemy(Em_ptr->id_100))
 				{
 					float multi = 0.0f;
-					if (re4t::cfg->bTrainerRandomHPMultiplier)
+					if (re4t::cfg->bChaosEnabled && re4t::cfg->bChaosThickHP)
+						multi = aiza::Bound(re4t::cfg->fChaosHPMultiplier, 0.1f, 15.0f, 5.0f);
+					else if (re4t::cfg->bTrainerRandomHPMultiplier)
 						multi = GetRandomFloat(re4t::cfg->fTrainerRandomHPMultiMin, re4t::cfg->fTrainerRandomHPMultiMax);
 					else
 						multi = re4t::cfg->fTrainerEnemyHPMultiplier;
@@ -912,10 +918,12 @@ void Trainer_Init()
 				// Get pointer to cEm
 				cEm* Em_ptr = (cEm*)(regs.esi);
 
-				if (re4t::cfg->bTrainerEnemyHPMultiplier && IsEnemy(Em_ptr->id_100))
+				if ((re4t::cfg->bTrainerEnemyHPMultiplier || (re4t::cfg->bChaosEnabled && re4t::cfg->bChaosThickHP)) && IsEnemy(Em_ptr->id_100))
 				{
 					float multi = 0.0f;
-					if (re4t::cfg->bTrainerRandomHPMultiplier)
+					if (re4t::cfg->bChaosEnabled && re4t::cfg->bChaosThickHP)
+						multi = aiza::Bound(re4t::cfg->fChaosHPMultiplier, 0.1f, 15.0f, 5.0f);
+					else if (re4t::cfg->bTrainerRandomHPMultiplier)
 						multi = GetRandomFloat(re4t::cfg->fTrainerRandomHPMultiMin, re4t::cfg->fTrainerRandomHPMultiMax);
 					else
 						multi = re4t::cfg->fTrainerEnemyHPMultiplier;
@@ -2173,6 +2181,83 @@ void Trainer_RenderUI(int columnCount)
 				ImGui::RadioButton("Not present", &AshleyStateOverride, AshleyState::NotPresent);
 			}
 
+            if ((OptionsFilter.PassFilter("Aiza Chaos speed BRRRT launch rocket tornado shockwave") && OptionsFilter.IsActive()) || !OptionsFilter.IsActive())
+            {
+                ImGui_ColumnSwitch();
+                ImGui::TextWrapped("Aiza Chaos - Content Mode");
+                ImGui_ItemSeparator();
+                auto* chaos=re4t::cfg;
+                chaos->HasUnsavedChanges |= ImGui::Checkbox("Chaos master (F6)", &chaos->bChaosEnabled);
+                ImGui::TextWrapped(chaos->bChaosEnabled ? "Status: ON" : "Status: OFF");
+                chaos->HasUnsavedChanges |= ImGui::Checkbox("Show Chaos HUD", &chaos->bChaosShowHUD);
+
+                // Presets are explicit actions, never enabled on first load.
+                static const char* presetNames[]={"BRRRT Content", "Space Program", "Tornado Party"};
+                for (int preset=0; preset<3; ++preset)
+                {
+                    if (ImGui::Button(presetNames[preset]))
+                    {
+                        chaos->bChaosEnabled=true;
+                        chaos->bChaosFastRun=true; chaos->fChaosRunSpeed=5;
+                        chaos->bChaosFastFire=true; chaos->fChaosFireSpeed=12;
+                        chaos->bChaosInfiniteAmmo=true;
+                        chaos->bChaosEnemySpeed=true; chaos->fChaosEnemySpeed=2;
+                        chaos->bChaosThickHP=true; chaos->fChaosHPMultiplier=5;
+                        chaos->bChaosLaunchShots=true; chaos->bChaosIncludeHeavy=false;
+                        chaos->iChaosLaunchMode=preset;
+                        // BRRRT uses boomerang; Space Program uses straight rockets.
+                        if (preset==0) chaos->iChaosLaunchMode=1;
+                        if (preset==1) chaos->iChaosLaunchMode=0;
+                        chaos->fChaosLaunchHeight=preset==1 ? 18000.0f : 6000.0f;
+                        chaos->fChaosFlightDuration=preset==1 ? 5.0f : 3.0f;
+                        chaos->fChaosLaunchSpread=preset==2 ? 1800.0f : 1200.0f;
+                        chaos->fChaosLaunchCooldown=0.7f; chaos->fChaosPulseRadius=2500;
+                        chaos->bTrainerVillageSizeChaos=true;
+                        chaos->fTrainerVillageSizeMin=0.5f; chaos->fTrainerVillageSizeMax=2;
+                        chaos->HasUnsavedChanges=true;
+                    }
+                }
+                ImGui::TextWrapped("Presets activate Chaos. Thick HP and random size affect new spawns; reload the room to apply them.");
+                ImGui::BeginDisabled(!chaos->bChaosEnabled);
+                auto toggle=[&](const char* name, bool* value) {
+                    chaos->HasUnsavedChanges |= ImGui::Checkbox(name, value);
+                };
+                auto slider=[&](const char* name, float* value, float low, float high, const char* format) {
+                    chaos->HasUnsavedChanges |= ImGui::SliderFloat(name, value, low, high, format, ImGuiSliderFlags_AlwaysClamp);
+                };
+                toggle("Fast run (hold Run + direction)", &chaos->bChaosFastRun);
+                ImGui::BeginDisabled(!chaos->bChaosFastRun);
+                slider("Run multiplier", &chaos->fChaosRunSpeed, 1, 15, "%.1fx");
+                ImGui::EndDisabled();
+                toggle("BRRRT (hold Aim + Fire)", &chaos->bChaosFastFire);
+                ImGui::BeginDisabled(!chaos->bChaosFastFire);
+                slider("Fire animation multiplier", &chaos->fChaosFireSpeed, 1, 30, "%.1fx");
+                ImGui::EndDisabled();
+                toggle("Infinite ammo during Chaos", &chaos->bChaosInfiniteAmmo);
+                toggle("Fast enemy animations", &chaos->bChaosEnemySpeed);
+                ImGui::BeginDisabled(!chaos->bChaosEnemySpeed);
+                slider("Enemy animation multiplier", &chaos->fChaosEnemySpeed, 0.2f, 10, "%.1fx");
+                ImGui::EndDisabled();
+                toggle("Thick HP on new spawns", &chaos->bChaosThickHP);
+                ImGui::BeginDisabled(!chaos->bChaosThickHP);
+                slider("Chaos HP multiplier", &chaos->fChaosHPMultiplier, 0.1f, 15, "%.1fx");
+                ImGui::EndDisabled();
+                toggle("Launch enemies hit by shots", &chaos->bChaosLaunchShots);
+                toggle("Also launch El Gigante (experimental)", &chaos->bChaosIncludeHeavy);
+                const char* modes[]={"Rocket", "Boomerang", "Tornado"};
+                chaos->HasUnsavedChanges |= ImGui::Combo("Flight style", &chaos->iChaosLaunchMode, modes, IM_ARRAYSIZE(modes));
+                slider("Launch height (game units)", &chaos->fChaosLaunchHeight, 200, 30000, "%.0f");
+                slider("Flight duration", &chaos->fChaosFlightDuration, 0.5f, 8, "%.1f sec");
+                slider("Boomerang / Tornado spread", &chaos->fChaosLaunchSpread, 0, 4000, "%.0f");
+                slider("Launch cooldown per enemy", &chaos->fChaosLaunchCooldown, 0.2f, 5, "%.1f sec");
+                slider("Shockwave radius (game units)", &chaos->fChaosPulseRadius, 200, 6000, "%.0f");
+                if (ImGui::Button("Launch nearby enemies now (F7)")) aiza::ChaosRequestPulse();
+                ImGui::EndDisabled();
+                ImGui::TextWrapped("F6 OFF returns active flights to their launch position. All flight styles return to that position when finished. Up to 16 enemies fly at once.");
+                ImGui::TextWrapped("Gameplay only: pauses during cutscenes, inventory, ladders and boats. Shot launches require matching weapon damage plus HP loss. Targets: selected ESL humanoids; other bosses and merchants are excluded.");
+                ImGui::TextWrapped("Speed boosts use native animation rates; this does not create new AI behavior. Extreme fire rates may skip native animation events. Start with a preset before increasing them.");
+            }
+
             // Aiza Chaos uses the existing ESL initialization hooks.
             if ((OptionsFilter.PassFilter("Aiza Chaos village random size") && OptionsFilter.IsActive()) || !OptionsFilter.IsActive())
             {
@@ -2180,8 +2265,8 @@ void Trainer_RenderUI(int columnCount)
                 ImGui::TextWrapped("Aiza Chaos - Village Size");
                 ImGui_ItemSeparator();
                 re4t::cfg->HasUnsavedChanges |= ImGui::Checkbox("Random Ganado size (visual)", &re4t::cfg->bTrainerVillageSizeChaos);
-                ImGui::TextWrapped(re4t::cfg->bTrainerVillageSizeChaos ? "Status: ON for future spawns" : "Status: OFF for future spawns");
-                ImGui::BeginDisabled(!re4t::cfg->bTrainerVillageSizeChaos);
+                ImGui::TextWrapped(re4t::cfg->bTrainerVillageSizeChaos ? "Size selected; requires Chaos master ON" : "Status: OFF for future spawns");
+                ImGui::BeginDisabled(!re4t::cfg->bChaosEnabled || !re4t::cfg->bTrainerVillageSizeChaos);
                 if (ImGui::SliderFloat("Smallest size", &re4t::cfg->fTrainerVillageSizeMin, 0.5f, 2.0f, "%.2fx", ImGuiSliderFlags_AlwaysClamp))
                 {
                     re4t::cfg->fTrainerVillageSizeMin = aiza::ClampVillageScale(re4t::cfg->fTrainerVillageSizeMin);

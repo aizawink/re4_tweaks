@@ -88,6 +88,9 @@
     <ClCompile Include="input.cpp">
       <Filter>dllmain</Filter>
     </ClCompile>
+    <ClCompile Include="Chaos.cpp">
+      <Filter>dllmain</Filter>
+    </ClCompile>
     <ClCompile Include="Game.cpp">
       <Filter>dllmain</Filter>
     </ClCompile>
@@ -250,6 +253,15 @@
       <Filter>includes</Filter>
     </ClInclude>
     <ClInclude Include="input.hpp">
+      <Filter>dllmain</Filter>
+    </ClInclude>
+    <ClInclude Include="Chaos.h">
+      <Filter>dllmain</Filter>
+    </ClInclude>
+    <ClInclude Include="ChaosCore.h">
+      <Filter>dllmain</Filter>
+    </ClInclude>
+    <ClInclude Include="ChaosMath.h">
       <Filter>dllmain</Filter>
     </ClInclude>
     <ClInclude Include="Game.h">

@@ -10,6 +10,7 @@
 #include "Utils.h"
 #include "Trainer.h"
 #include "ChaosMath.h"
+#include "ChaosCore.h"
 
 const std::wstring sSettingOverridesPath = L"re4_tweaks\\setting_overrides\\";
 
@@ -396,6 +397,36 @@ void ReadSettingsIni(std::wstring ini_path, setType type)
 
 		re4t::cfg->bTrainerPlayerSpeedOverride = ini.getBool("OVERRIDES", "EnablePlayerSpeedOverride", re4t::cfg->bTrainerPlayerSpeedOverride);
 		re4t::cfg->fTrainerPlayerSpeedOverride = ini.getFloat("OVERRIDES", "PlayerSpeedOverride", re4t::cfg->fTrainerPlayerSpeedOverride);
+
+        re4t::cfg->bChaosEnabled = ini.getBool("AIZA_CHAOS", "Enabled", re4t::cfg->bChaosEnabled);
+        re4t::cfg->bChaosShowHUD = ini.getBool("AIZA_CHAOS", "ShowHUD", re4t::cfg->bChaosShowHUD);
+        re4t::cfg->bChaosFastRun = ini.getBool("AIZA_CHAOS", "FastRun", re4t::cfg->bChaosFastRun);
+        re4t::cfg->fChaosRunSpeed = ini.getFloat("AIZA_CHAOS", "RunSpeed", re4t::cfg->fChaosRunSpeed);
+        re4t::cfg->bChaosFastFire = ini.getBool("AIZA_CHAOS", "FastFire", re4t::cfg->bChaosFastFire);
+        re4t::cfg->fChaosFireSpeed = ini.getFloat("AIZA_CHAOS", "FireSpeed", re4t::cfg->fChaosFireSpeed);
+        re4t::cfg->bChaosInfiniteAmmo = ini.getBool("AIZA_CHAOS", "InfiniteAmmo", re4t::cfg->bChaosInfiniteAmmo);
+        re4t::cfg->bChaosEnemySpeed = ini.getBool("AIZA_CHAOS", "EnemySpeedEnabled", re4t::cfg->bChaosEnemySpeed);
+        re4t::cfg->fChaosEnemySpeed = ini.getFloat("AIZA_CHAOS", "EnemySpeed", re4t::cfg->fChaosEnemySpeed);
+        re4t::cfg->bChaosThickHP = ini.getBool("AIZA_CHAOS", "ThickHP", re4t::cfg->bChaosThickHP);
+        re4t::cfg->fChaosHPMultiplier = ini.getFloat("AIZA_CHAOS", "HPMultiplier", re4t::cfg->fChaosHPMultiplier);
+        re4t::cfg->bChaosLaunchShots = ini.getBool("AIZA_CHAOS", "LaunchShots", re4t::cfg->bChaosLaunchShots);
+        re4t::cfg->bChaosIncludeHeavy = ini.getBool("AIZA_CHAOS", "IncludeElGigante", re4t::cfg->bChaosIncludeHeavy);
+        re4t::cfg->iChaosLaunchMode = ini.getInt("AIZA_CHAOS", "LaunchMode", re4t::cfg->iChaosLaunchMode);
+        re4t::cfg->fChaosLaunchHeight = ini.getFloat("AIZA_CHAOS", "LaunchHeight", re4t::cfg->fChaosLaunchHeight);
+        re4t::cfg->fChaosFlightDuration = ini.getFloat("AIZA_CHAOS", "FlightDuration", re4t::cfg->fChaosFlightDuration);
+        re4t::cfg->fChaosLaunchSpread = ini.getFloat("AIZA_CHAOS", "LaunchSpread", re4t::cfg->fChaosLaunchSpread);
+        re4t::cfg->fChaosLaunchCooldown = ini.getFloat("AIZA_CHAOS", "LaunchCooldown", re4t::cfg->fChaosLaunchCooldown);
+        re4t::cfg->fChaosPulseRadius = ini.getFloat("AIZA_CHAOS", "PulseRadius", re4t::cfg->fChaosPulseRadius);
+        re4t::cfg->fChaosRunSpeed = aiza::Bound(re4t::cfg->fChaosRunSpeed, 1.0f, 15.0f, 5.0f);
+        re4t::cfg->fChaosFireSpeed = aiza::Bound(re4t::cfg->fChaosFireSpeed, 1.0f, 30.0f, 12.0f);
+        re4t::cfg->fChaosEnemySpeed = aiza::Bound(re4t::cfg->fChaosEnemySpeed, 0.2f, 10.0f, 2.0f);
+        re4t::cfg->fChaosHPMultiplier = aiza::Bound(re4t::cfg->fChaosHPMultiplier, 0.1f, 15.0f, 5.0f);
+        re4t::cfg->fChaosLaunchHeight = aiza::Bound(re4t::cfg->fChaosLaunchHeight, 200.0f, 30000.0f, 6000.0f);
+        re4t::cfg->fChaosFlightDuration = aiza::Bound(re4t::cfg->fChaosFlightDuration, 0.5f, 8.0f, 3.0f);
+        re4t::cfg->fChaosLaunchSpread = aiza::Bound(re4t::cfg->fChaosLaunchSpread, 0.0f, 4000.0f, 1200.0f);
+        re4t::cfg->fChaosLaunchCooldown = aiza::Bound(re4t::cfg->fChaosLaunchCooldown, 0.2f, 5.0f, 0.7f);
+        re4t::cfg->fChaosPulseRadius = aiza::Bound(re4t::cfg->fChaosPulseRadius, 200.0f, 6000.0f, 2500.0f);
+        re4t::cfg->iChaosLaunchMode = std::clamp(re4t::cfg->iChaosLaunchMode, 0, 2);
 
         re4t::cfg->bTrainerVillageSizeChaos = ini.getBool("AIZA_CHAOS", "VillageSizeChaos", re4t::cfg->bTrainerVillageSizeChaos);
         re4t::cfg->fTrainerVillageSizeMin = aiza::ClampVillageScale(ini.getFloat("AIZA_CHAOS", "VillageSizeMin", re4t::cfg->fTrainerVillageSizeMin));
@@ -834,6 +865,25 @@ void re4t_cfg::WriteSettings(bool trainerOnly)
 		ini.setBool("OVERRIDES", "OverrideDifficulty", re4t::cfg->bOverrideDifficulty);
 		ini.setString("OVERRIDES", "NewDifficulty", std::string(sGameDifficultyNames[int(re4t::cfg->NewDifficulty)]));
 
+        ini.setBool("AIZA_CHAOS", "Enabled", re4t::cfg->bChaosEnabled);
+        ini.setBool("AIZA_CHAOS", "ShowHUD", re4t::cfg->bChaosShowHUD);
+        ini.setBool("AIZA_CHAOS", "FastRun", re4t::cfg->bChaosFastRun);
+        ini.setFloat("AIZA_CHAOS", "RunSpeed", re4t::cfg->fChaosRunSpeed);
+        ini.setBool("AIZA_CHAOS", "FastFire", re4t::cfg->bChaosFastFire);
+        ini.setFloat("AIZA_CHAOS", "FireSpeed", re4t::cfg->fChaosFireSpeed);
+        ini.setBool("AIZA_CHAOS", "InfiniteAmmo", re4t::cfg->bChaosInfiniteAmmo);
+        ini.setBool("AIZA_CHAOS", "EnemySpeedEnabled", re4t::cfg->bChaosEnemySpeed);
+        ini.setFloat("AIZA_CHAOS", "EnemySpeed", re4t::cfg->fChaosEnemySpeed);
+        ini.setBool("AIZA_CHAOS", "ThickHP", re4t::cfg->bChaosThickHP);
+        ini.setFloat("AIZA_CHAOS", "HPMultiplier", re4t::cfg->fChaosHPMultiplier);
+        ini.setBool("AIZA_CHAOS", "LaunchShots", re4t::cfg->bChaosLaunchShots);
+        ini.setBool("AIZA_CHAOS", "IncludeElGigante", re4t::cfg->bChaosIncludeHeavy);
+        ini.setInt("AIZA_CHAOS", "LaunchMode", re4t::cfg->iChaosLaunchMode);
+        ini.setFloat("AIZA_CHAOS", "LaunchHeight", re4t::cfg->fChaosLaunchHeight);
+        ini.setFloat("AIZA_CHAOS", "FlightDuration", re4t::cfg->fChaosFlightDuration);
+        ini.setFloat("AIZA_CHAOS", "LaunchSpread", re4t::cfg->fChaosLaunchSpread);
+        ini.setFloat("AIZA_CHAOS", "LaunchCooldown", re4t::cfg->fChaosLaunchCooldown);
+        ini.setFloat("AIZA_CHAOS", "PulseRadius", re4t::cfg->fChaosPulseRadius);
         ini.setBool("AIZA_CHAOS", "VillageSizeChaos", re4t::cfg->bTrainerVillageSizeChaos);
         ini.setFloat("AIZA_CHAOS", "VillageSizeMin", re4t::cfg->fTrainerVillageSizeMin);
         ini.setFloat("AIZA_CHAOS", "VillageSizeMax", re4t::cfg->fTrainerVillageSizeMax);

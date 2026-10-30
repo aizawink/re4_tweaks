@@ -35,8 +35,9 @@ struct cEm {
 struct cEm10 : cEm { Vec Scale_498; };
 struct GLOBAL_WK { EM_LIST Em_list_5410[256]; } globals;
 GLOBAL_WK* GlobalPtr() { return &globals; }
-struct Config { bool bTrainerVillageSizeChaos=true; float fTrainerVillageSizeMin=1.5f, fTrainerVillageSizeMax=1.5f; } config;
+struct Config { bool bChaosEnabled=true; bool bTrainerVillageSizeChaos=true; float fTrainerVillageSizeMin=1.5f, fTrainerVillageSizeMax=1.5f; } config;
 namespace re4t { Config* cfg=&config; }
+namespace aiza { void ChaosOnSpawn(cEm*) {} }
 bool IsGanado(int id) { return id==0x15; }
 float GetRandomFloat(float low, float high) { assert(low<=high); return low; }
 namespace spd { struct Logger { template<class... T> void info(const char*,T...) {} }; Logger logger; Logger* log() { return &logger; } }
@@ -54,6 +55,11 @@ int main() {
     assert(enemy.moves==1 && enemy.scale_AC.x==1.5f && enemy.Scale_498.x==1.5f);
     SetEmListParamExtensions(&enemy, &entry);
     assert(enemy.moves==1 && enemy.scale_AC.x==1.5f);
+    config.bChaosEnabled=false;
+    cEm10 masterOff;
+    SetEmListParamExtensions(&masterOff, &entry);
+    assert(masterOff.moves==0);
+    config.bChaosEnabled=true;
     config.bTrainerVillageSizeChaos=false;
     cEm10 disabled;
     SetEmListParamExtensions(&disabled, &entry);

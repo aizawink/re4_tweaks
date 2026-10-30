@@ -1,5 +1,6 @@
 #include "dllmain.h"
 #include "Game.h"
+#include "Chaos.h"
 #include "ConsoleWnd.h"
 #include "SDK/filter00.h"
 #include "Sections.h"
@@ -835,7 +836,16 @@ void __fastcall cSceSys__scheduler_Hook(void* thisptr, void* unused)
 		}
 	}
 
-	cSceSys__scheduler(thisptr, unused);
+    aiza::ChaosBeforeUpdate();
+    // Reuse the already-resolved native fire-trigger buffer. Restore only
+    // the bit we injected so unrelated input changes survive the frame.
+    const uint64_t fireBit=uint64_t(KEY_BTN::KEY_FIRE);
+    uint64_t* triggers=ptrKey_btn_trg ? reinterpret_cast<uint64_t*>(ptrKey_btn_trg) : nullptr;
+    const bool injected=aiza::ChaosWantsFireTrigger() && triggers && ((*triggers & fireBit)==0);
+    if (injected) *triggers |= fireBit;
+    cSceSys__scheduler(thisptr, unused);
+    if (injected) *triggers &= ~fireBit;
+    aiza::ChaosAfterUpdate();
 }
 
 bool AreaJump(uint16_t roomNo, Vec& position, float rotation)

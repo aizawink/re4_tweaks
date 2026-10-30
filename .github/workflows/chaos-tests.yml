@@ -16,3 +16,9 @@ jobs:
           /tmp/chaos-test
       - name: Test production spawn-scale control flow
         run: python3 tests/test_spawn_scale.py
+      - name: Test launch paths at different frame rates
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -fsanitize=undefined tests/chaos_flight_test.cpp -o /tmp/flight-test
+          /tmp/flight-test
+      - name: Test production Chaos lifecycle and memory access
+        run: python3 tests/test_chaos_runtime.py

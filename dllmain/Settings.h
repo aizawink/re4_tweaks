@@ -241,6 +241,28 @@ public:
 	float fTrainerVillageSizeMin = 0.75f;
 	float fTrainerVillageSizeMax = 1.35f;
 
+
+    // Aiza Chaos runtime; everything defaults to OFF.
+    bool bChaosEnabled = false;
+    bool bChaosShowHUD = true;
+    bool bChaosFastRun = false;
+    float fChaosRunSpeed = 5.0f;
+    bool bChaosFastFire = false;
+    float fChaosFireSpeed = 12.0f;
+    bool bChaosInfiniteAmmo = false;
+    bool bChaosEnemySpeed = false;
+    float fChaosEnemySpeed = 2.0f;
+    bool bChaosThickHP = false;
+    float fChaosHPMultiplier = 5.0f;
+    bool bChaosLaunchShots = false;
+    bool bChaosIncludeHeavy = false;
+    int iChaosLaunchMode = 0;
+    float fChaosLaunchHeight = 6000.0f;
+    float fChaosFlightDuration = 3.0f;
+    float fChaosLaunchSpread = 1200.0f;
+    float fChaosLaunchCooldown = 0.7f;
+    float fChaosPulseRadius = 2500.0f;
+
 	// TRAINER_HOTKEYS
 	std::string sTrainerFocusUIKeyCombo = "F5";
 	std::string sTrainerNoclipKeyCombo = "";

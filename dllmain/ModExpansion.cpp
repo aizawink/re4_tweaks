@@ -4,6 +4,7 @@
 #include "Game.h"
 #include "Settings.h"
 #include "ChaosMath.h"
+#include "Chaos.h"
 #include "Utils.h"
 
 void SetEmListParamExtensions(cEm* em, EM_LIST* emData)
@@ -11,6 +12,8 @@ void SetEmListParamExtensions(cEm* em, EM_LIST* emData)
     GLOBAL_WK* pG = GlobalPtr();
     if (!pG || !em || !emData || !em->IsValid())
         return;
+
+    aiza::ChaosOnSpawn(em);
 
     // Event spawns can supply stack-based entries. Accept only aligned
     // entries in the live ESL array; integer comparisons avoid unrelated
@@ -25,7 +28,7 @@ void SetEmListParamExtensions(cEm* em, EM_LIST* emData)
     const bool hasExtensions = authored &&
         (emData->percentageMotionSpeed_1C || emData->percentageScale_1E);
     const bool initializing = em->r_no_0_FC == uint8_t(cEm::Routine0::Init);
-    const bool randomSize = re4t::cfg && re4t::cfg->bTrainerVillageSizeChaos &&
+    const bool randomSize = re4t::cfg && re4t::cfg->bChaosEnabled && re4t::cfg->bTrainerVillageSizeChaos &&
         !authored && initializing && em->IsSpawnedByESL() &&
         &pG->Em_list_5410[em->emListIndex_3A0] == emData &&
         em->id_100 == static_cast<uint8_t>(emData->id_1) &&
