@@ -1,6 +1,6 @@
-# Aiza Chaos v2 — BRRRT, speed, dan pelontar musuh
+# Aiza Chaos v3 — spawn, encounter, dan efek absurd
 
-Dibangun dari fork asli re4_tweaks. Semua efek mulai OFF. Source mod eksperimen
+Dibangun dari fork asli re4_tweaks. Semua efek yang mengubah gameplay mulai OFF. Source mod eksperimen
 lama tidak ditimpa atau dicampur secara otomatis.
 
 ## Mulai cepat
@@ -18,7 +18,8 @@ lama tidak ditimpa atau dicampur secara otomatis.
 ## Kontrol dan preset
 
 - **F6**: master ON/OFF ketika jendela game aktif.
-- **F7**: shockwave manual, melontarkan sampai 16 target ESL di sekitar Leon.
+- **F7**: shockwave manual, melontarkan sampai 16 target yang didukung di sekitar Leon.
+- **F9**: Bowling blast ke depan; aktifkan checkbox Bowling atau salah satu preset.
 - **HUD**: status master, multiplier yang aktif, jumlah musuh terbang.
 - **BRRRT Content**: lari 5x, tembakan 12x, animasi musuh 2x, HP spawn 5x,
   ammo tak habis, ukuran desa acak, dan pelontar Boomerang.
@@ -54,7 +55,7 @@ sepanjang lintasan, sehingga musuh bisa melewati geometri saat terbang.
 Ketiga gaya kembali ke titik peluncuran yang diketahui; tidak menebak tinggi
 lantai pada koordinat lain. F6 OFF juga mengembalikan penerbangan aktif.
 
-Target pelontar/kecepatan: ESL humanoid dengan ID 11,12,15,16,17,19,1A,1F
+Target pelontar: humanoid ESL atau tambahan Director dengan ID 11,12,15,16,17,19,1A,1F
 (hex). ID alias Merchant 13,14,18,1E tidak digunakan. El Gigante (2B) tersedia
 sebagai opsi eksperimental, default OFF. Boss lain tidak disertakan. Entri
 script sementara tanpa indeks ESL tidak dipaksa menjadi target.
@@ -69,6 +70,89 @@ Kecepatan menggunakan animasi asli. Nilai ekstrem bisa melewati event animasi
 native; multiplier bukan jaminan angka peluru/detik tertentu. Coba preset
 terlebih dahulu. Grenade, egg, knife, harpoon dan rocket launcher tidak
 mendapat injeksi BRRRT. Pemakaian Matilda tetap mengikuti opsi burst aslinya.
+
+## Director: spawn, penggantian, dan gelombang
+
+Buka F1 → Trainer → Overrides → **Aiza Director - Enemies & Encounters**.
+Aktifkan Chaos master. Tombol hanya mengantrekan perintah: tutup menu agar
+native gameplay berjalan dan perintah diproses. Status/log membedakan antrean,
+keberhasilan native creator, dan kegagalan. Jangan menganggap tombol terklik
+berarti model sudah muncul.
+
+1. Masuk area berisi musuh. Katalog mempelajari descriptor musuh native yang
+   sudah terinisialisasi. Pilih entri bertanda tersedia. Model yang belum
+   pernah teramati di room ini tidak akan dibuat hanya berdasarkan ID.
+2. Berdiri di lantai kosong, klik **Mark Leon's current position**, tutup menu
+   agar posisi ditandai, lalu menjauh. Buka lagi untuk memilih **Spawn 1/3/5**.
+3. Atur HP absolut 100–32767, ukuran visual 0.5–3x, dan animasi 0.2–5x.
+   Pembuatan bertahap setiap 250 ms. Maksimum 24 objek tambahan yang masih
+   dilacak, termasuk corpse yang belum dibuang native. Gunakan Clear bila penuh.
+4. **Clear only additional enemies** hanya memilih objek tambahan yang
+   pointer dan GUID-nya masih cocok. Musuh bawaan, termasuk penggantian ESL,
+   tidak termasuk. Objek yang sedang terikat grab/action dilewati; lepas aksi
+   lalu Clear lagi. Clear menghentikan antrean dan gelombang.
+
+Koordinat ESL harus lebih dahulu cocok dengan posisi inisialisasi native
+(`short * 10`). Bila indikator belum verified, masuk ulang room. Posisi ditandai
+manual karena tidak ada raycast lantai baru. Tidak ada pilihan spawn acak di
+udara atau di belakang geometri. Titik, katalog dan ownership dibuang saat
+pindah room/manager/player; titik tidak disimpan dalam INI.
+
+**Replace future normal spawns** punya tiga mode: template humanoid terpilih,
+random dari template tersedia dengan seed, atau chainsaw saat template native
+yang kompatibel tersedia. Tidak mengubah musuh yang sudah hidup. Hanya entri
+ESL biasa yang belum SET/DIE, HP positif, dan bukan entri extended-scale yang
+diproses; routine/event, lokasi, room, indeks, sight byte serta lifecycle asli
+dipertahankan. Descriptor penampilan dipulihkan sesudah native update tanpa
+membalik bit SET/DIE yang ditulis game. Penghitung **Observed replacements**
+bertambah bila objek baru benar-benar cocok dengan descriptor pengganti.
+
+Ini bukan pengganti seluruh musuh di semua chapter: katalog harus ditemukan
+dulu, dan spawn awal saat room init tidak dipaksa diubah. Mode chainsaw
+menunggu jika model native chainsaw belum tersedia. Menu tidak memuat modul
+musuh lintas area, dan model witness tidak menjamin semua resource/animasi
+sudah cocok. Gagal membuat objek menghentikan antrean, bukan menulis flag
+weapon/behavior acak.
+
+**Wave arena** memakai titik dan template terpilih. Jumlah awal 1–20, tambahan
+0–10 per wave (tetap maksimum 20 per wave), 1–50 wave, jeda 0–20 detik, dan
+pertumbuhan HP 0–2x per wave (faktor maksimum 15x, HP tetap int16 positif).
+Hanya musuh tambahan kelompok wave berjalan yang dihitung; musuh native
+boleh masih hidup. Wave berikut dimulai setelah kelompok itu mati dan jeda
+berakhir. Pool penuh atau witness hilang menghentikan wave dengan alasan.
+Corpse dapat memenuhi batas 24 sebelum dibuang native: Clear lalu mulai lagi.
+Tidak ada jaminan wave tak terbatas atau resource tambahan otomatis dimuat.
+
+**Random elite enemies** memberi peluang 0–100% per identitas actor yang
+teramati: HP 1–10x, ukuran 1–4x, animasi 1–5x. Berlaku sekali per GUID,
+termasuk musuh yang sudah hidup ketika toggle dinyalakan. Seed yang sama,
+room, indeks ESL/urutan spawn dan katalog yang sama menghasilkan pilihan yang
+sama. Mengubah seed tidak mengacak ulang actor yang telah diproses. HP/ukuran
+yang sudah diterapkan bertahan; speed mengikuti toggle. Kombinasi beberapa
+pengali tetap dibatasi sebelum ditulis.
+
+**Bowling blast** F9 melontarkan target humanoid dalam cone 120° di depan
+Leon, radius 200–2500 unit, memakai Boomerang. **Auto bowling** eksperimental
+menginfer serangan melee dari penurunan HP, state player-action dan posisi;
+ini belum hook kick native yang persis. Bowling tidak menambah damage, dan
+memakai batas/cooldown pelontar yang sama. Collision masih native.
+
+**Timed random events** berganti tiap 5–120 detik gameplay: Rocket Party,
+Tornado Party, fast enemies (3x), slow enemies (0.35x), atau BRRRT (20x).
+Rocket/Tornado mengubah reaksi hit, bukan otomatis mengangkat seluruh room;
+F7 tetap bisa dipakai. Event menjeda dengan gameplay dan tidak menimpa slider
+tersimpan. Master OFF menghentikannya.
+
+**Target HUD** menampilkan kandidat pada cone kamera: nama, ID/type, HP,
+GUID dan status tambahan. Ini bukan raycast bidikan: kandidat bisa tertutup
+tembok atau berbeda dari target peluru. Informasi ini membantu memeriksa
+hasil mod, bukan bukti serangan mengenai model tersebut.
+
+Katalog heavy eksperimental default OFF. Hanya descriptor native teramati
+yang dapat dipakai, dan pola script/resource heavy tetap bisa bergantung pada
+arena asli. Whitelist pelontar tetap terpisah; memilih heavy di katalog tidak
+membuat semua boss bisa Bowling/terbang. Lihat referensi kode dan batas bukti
+di [RESEARCH_REFERENCES.md](RESEARCH_REFERENCES.md).
 
 ## OFF, pause, dan perpindahan area
 
@@ -124,6 +208,11 @@ Tes otomatis memeriksa:
   pause, perpindahan area, slot reuse dan despawn. AddressSanitizer dan
   UndefinedBehaviorSanitizer aktif; leak detection dimatikan pada harness
   karena batasan ptrace executor.
+- Director produksi dengan pool tiruan: validasi pointer/alignment, koordinat,
+  spawn antrean, kegagalan native, kepemilikan GUID, clear/grab, penggantian
+  beserta lifecycle, wave/HP growth, model witness, elite sekali per GUID,
+  event pause dan request kedaluwarsa.
+- Seed, identitas template, batas koordinat/int overflow wave dan cone Bowling.
 - Bit fire sintetis dicabut setelah scheduler sambil mempertahankan bit lain
   dan input Fire asli pengguna.
 
@@ -139,9 +228,19 @@ Urutan tes gameplay:
 4. Ubah gaya ke Rocket lalu Tornado; coba F6 OFF di tengah penerbangan.
 5. Masuk inventory/keluar area saat efek berjalan; cek tidak ada flight lama
    diterapkan ke musuh baru. Matikan master dan muat ulang untuk baseline.
-6. El Gigante dicoba terpisah setelah tes humanoid, bukan bersama event boss.
+6. Dengan master ON, pilih template tersedia, tandai titik, tutup F1 agar
+   perintah diproses, menjauh lalu Spawn 1. Periksa status sukses dan Added
+   alive. Uji HP/ukuran/speed lalu Clear; pastikan musuh bawaan tetap ada.
+7. Coba replacement pada spawn normal berikutnya; periksa penghitung observed.
+   Coba mode chainsaw hanya jika katalog menunjukkan template tersedia.
+8. Wave 2 kelompok, awal 1 lalu +1. Bunuh kelompok tambahan, periksa jeda dan
+   HP kelompok kedua. Coba Stop, master OFF, dan pindah area ketika antrean ada.
+9. Nyalakan elite, Bowling F9 ke depan, lalu timed events. Coba masing-masing
+   sebelum menggabungkan semua efek. Uji Auto bowling terpisah.
+10. Heavy dicoba terpisah setelah tes humanoid, bukan bersama event boss.
 
-Log: cari `[Aiza Chaos]` pada `dinput8.log`. Jika efek tidak muncul, kirim log
+Log: cari `[Aiza Chaos]` dan `[Aiza Director]` pada `dinput8.log`. Jika efek tidak muncul, kirim log
 itu dan screenshot HUD/pilihan preset. Tidak perlu mengubah ID/flag event acak.
 
-Penggantian chainsaw dan mod cutscene tidak diklaim selesai oleh versi ini.
+Penggantian musuh v3 terbatas pada spawn normal mendatang dan template area aktif.
+Pemuatan model musuh lintas area serta mod cutscene belum diimplementasikan.

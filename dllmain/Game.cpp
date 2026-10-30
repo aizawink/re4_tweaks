@@ -1,6 +1,7 @@
 #include "dllmain.h"
 #include "Game.h"
 #include "Chaos.h"
+#include "Director.h"
 #include "ConsoleWnd.h"
 #include "SDK/filter00.h"
 #include "Sections.h"
@@ -846,6 +847,7 @@ void __fastcall cSceSys__scheduler_Hook(void* thisptr, void* unused)
     cSceSys__scheduler(thisptr, unused);
     if (injected) *triggers &= ~fireBit;
     aiza::ChaosAfterUpdate();
+    aiza::DirectorAfterUpdate();
 }
 
 bool AreaJump(uint16_t roomNo, Vec& position, float rotation)

@@ -37,7 +37,7 @@ struct GLOBAL_WK { EM_LIST Em_list_5410[256]; } globals;
 GLOBAL_WK* GlobalPtr() { return &globals; }
 struct Config { bool bChaosEnabled=true; bool bTrainerVillageSizeChaos=true; float fTrainerVillageSizeMin=1.5f, fTrainerVillageSizeMax=1.5f; } config;
 namespace re4t { Config* cfg=&config; }
-namespace aiza { void ChaosOnSpawn(cEm*) {} }
+namespace aiza { void ChaosOnSpawn(cEm*) {} bool DirectorLiveActor(cEm* p) {return p && p->IsValid();} void DirectorObserveInit(cEm*,EM_LIST*) {} }
 bool IsGanado(int id) { return id==0x15; }
 float GetRandomFloat(float low, float high) { assert(low<=high); return low; }
 namespace spd { struct Logger { template<class... T> void info(const char*,T...) {} }; Logger logger; Logger* log() { return &logger; } }

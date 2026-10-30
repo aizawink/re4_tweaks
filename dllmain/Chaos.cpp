@@ -3,6 +3,8 @@
 #include "Settings.h"
 #include "Chaos.h"
 #include "ChaosCore.h"
+#include "Director.h"
+#include "DirectorCore.h"
 #include "Utils.h"
 #include "imgui.h"
 #include <atomic>
@@ -37,6 +39,7 @@ struct Rate
 struct Enemy
 {
     unsigned id=0, index=255;
+    uint32_t guid=0;
     int hpBefore=0;
     float cooldown=0;
     Point before;
@@ -59,13 +62,14 @@ struct Scene
 Scene scene;
 std::unordered_map<cEm*, Enemy> enemies;
 Rate playerRate;
-std::atomic<bool> pulseRequest{false};
+std::atomic<bool> pulseRequest{false}, bowlingRequest{false};
 std::atomic<unsigned> flyingCount{0};
 bool wantsFire=false, pulseThisFrame=false, activeFrame=false, ammoInjected=false;
 int weaponNo=-1;
 float deltaSeconds=0;
 ULONGLONG previousTick=0, lastFireTick=0;
-bool f6Down=false, f7Down=false;
+bool f6Down=false, f7Down=false, f9Down=false;
+bool bowlingThisFrame=false;
 
 Point Read(cEm* actor) { return {actor->pos_94.x, actor->pos_94.y, actor->pos_94.z}; }
 void Place(cEm* actor, Point position)
@@ -85,7 +89,7 @@ Scene CurrentScene()
 }
 bool Supported(cEm& em)
 {
-    return em.IsSpawnedByESL() && IsChaosTarget(em.id_100, re4t::cfg->bChaosIncludeHeavy) &&
+    return (em.IsSpawnedByESL() || DirectorOwns(&em)) && IsChaosTarget(em.id_100, re4t::cfg->bChaosIncludeHeavy) &&
         em.r_no_0_FC!=uint8_t(cEm::Routine0::Init) && Finite(Read(&em));
 }
 bool Blocked(const Scene& s)
@@ -112,7 +116,7 @@ void CancelCurrentFlights(const Scene& current)
         {
             auto it=enemies.find(&em);
             if (it!=enemies.end() && em.IsValid() && it->second.id==em.id_100 &&
-                it->second.index==em.emListIndex_3A0 && it->second.flight.active)
+                it->second.index==em.emListIndex_3A0 && it->second.guid==em.guid_F8 && it->second.flight.active)
                 Place(&em, it->second.flight.Cancel());
         }
     enemies.clear(); flyingCount=0;
@@ -121,6 +125,7 @@ void Hotkeys()
 {
     const bool f6=(GetAsyncKeyState(VK_F6)&0x8000)!=0;
     const bool f7=(GetAsyncKeyState(VK_F7)&0x8000)!=0;
+    const bool f9=(GetAsyncKeyState(VK_F9)&0x8000)!=0;
     DWORD pid=0;
     GetWindowThreadProcessId(GetForegroundWindow(), &pid);
     if (pid==GetCurrentProcessId())
@@ -132,8 +137,9 @@ void Hotkeys()
             spd::log()->info("[Aiza Chaos] F6 master {}", re4t::cfg->bChaosEnabled ? "ON" : "OFF");
         }
         if (f7 && !f7Down) pulseRequest=true;
+        if (f9 && !f9Down) bowlingRequest=true;
     }
-    f6Down=f6; f7Down=f7;
+    f6Down=f6; f7Down=f7; f9Down=f9;
 }
 unsigned ActiveFlights()
 {
@@ -141,10 +147,10 @@ unsigned ActiveFlights()
     for (const auto& entry : enemies) count+=entry.second.flight.active ? 1u : 0u;
     return count;
 }
-void Launch(cEm* actor, Enemy& state, Point player, const char* reason)
+void Launch(cEm* actor, Enemy& state, Point player, const char* reason, int mode=-1)
 {
     if (state.flight.active || state.cooldown>0 || ActiveFlights()>=16) return;
-    state.flight.Start(Read(actor), player, re4t::cfg->iChaosLaunchMode,
+    state.flight.Start(Read(actor), player, mode<0 ? DirectorFlightMode(re4t::cfg->iChaosLaunchMode) : mode,
         re4t::cfg->fChaosLaunchHeight, re4t::cfg->fChaosFlightDuration, re4t::cfg->fChaosLaunchSpread);
     state.cooldown=Bound(re4t::cfg->fChaosLaunchCooldown, 0.2f, 5, 0.7f);
     spd::log()->info("[Aiza Chaos] Launch {} ESL {} id {:02X} mode {}",
@@ -159,7 +165,10 @@ void ChaosOnSpawn(cEm* enemy)
     if (enemy && enemy->r_no_0_FC==uint8_t(cEm::Routine0::Init))
         enemies.erase(enemy);
 }
+void ChaosForgetActor(cEm* enemy) { enemies.erase(enemy); }
+bool ChaosActorFlying(cEm* enemy) {auto it=enemies.find(enemy);return it!=enemies.end() && it->second.guid==enemy->guid_F8 && it->second.flight.active;}
 void ChaosRequestPulse() { pulseRequest=true; }
+void ChaosRequestBowling() { bowlingRequest=true; }
 bool ChaosWantsFireTrigger() { return wantsFire; }
 
 void ChaosBeforeUpdate()
@@ -167,6 +176,7 @@ void ChaosBeforeUpdate()
     wantsFire=false; activeFrame=false; weaponNo=-1; pulseThisFrame=false;
     if (!re4t::cfg) return;
     Hotkeys();
+    DirectorBeforeUpdate();
     const auto now=GetTickCount64();
     deltaSeconds=previousTick ? Bound(float(now-previousTick)/1000, 0, 0.1f, 0) : 0;
     previousTick=now;
@@ -179,11 +189,12 @@ void ChaosBeforeUpdate()
     if (!re4t::cfg->bChaosEnabled || Blocked(current))
     {
         CancelCurrentFlights(current);
-        pulseRequest=false;
+        pulseRequest=false; bowlingRequest=false;
         return;
     }
     activeFrame=true;
     pulseThisFrame=pulseRequest.exchange(false);
+    bowlingThisFrame=bowlingRequest.exchange(false) && re4t::cfg->bChaosBowling;
     auto* player=current.player;
     const uint64_t keys=Key_btn_on();
     const bool aiming=(keys&uint64_t(KEY_BTN::KEY_KAMAE))!=0;
@@ -206,9 +217,9 @@ void ChaosBeforeUpdate()
     float speed=1;
     if (re4t::cfg->bChaosFastRun && running)
         speed=Bound(re4t::cfg->fChaosRunSpeed, 1, 15, 5);
-    if (re4t::cfg->bChaosFastFire && firing && IsChaosGun(item))
+    if ((re4t::cfg->bChaosFastFire || DirectorFireFactor()>1) && firing && IsChaosGun(item))
     {
-        speed=Bound(re4t::cfg->fChaosFireSpeed, 1, 30, 12);
+        speed=Bound((re4t::cfg->bChaosFastFire ? re4t::cfg->fChaosFireSpeed : 1)*DirectorFireFactor(), 1, 30, 12);
         player->Wep_7D8->m_ShotTimer_23=0;
         wantsFire=true;
     }
@@ -220,15 +231,18 @@ void ChaosBeforeUpdate()
 
     for (auto& em : *current.manager)
     {
-        if (!em.IsValid() || !Supported(em)) continue;
+        if (!em.IsValid()) continue;
+        const float directorSpeed=DirectorEliteSpeed(&em);
+        if (!Supported(em) && !DirectorOwns(&em) && directorSpeed==1) continue;
         auto& state=enemies[&em];
-        if (state.id!=em.id_100 || state.index!=em.emListIndex_3A0) state={};
-        state.id=em.id_100; state.index=em.emListIndex_3A0;
+        if (state.id!=em.id_100 || state.index!=em.emListIndex_3A0 || state.guid!=em.guid_F8) state={};
+        state.id=em.id_100; state.index=em.emListIndex_3A0; state.guid=em.guid_F8;
         state.hpBefore=em.hp_324; state.before=Read(&em);
         state.cooldown=std::max(0.0f, state.cooldown-deltaSeconds);
         state.rate={};
-        if (em.hp_324>0 && re4t::cfg->bChaosEnemySpeed)
-            state.rate.Apply(&em, Bound(re4t::cfg->fChaosEnemySpeed, 0.2f, 10, 2));
+        const float enemyFactor=(re4t::cfg->bChaosEnemySpeed ? re4t::cfg->fChaosEnemySpeed : 1)*DirectorEnemyFactor()*directorSpeed;
+        if (em.hp_324>0 && enemyFactor!=1)
+            state.rate.Apply(&em, Bound(enemyFactor, 0.2f, 10, 2));
     }
 }
 
@@ -253,12 +267,13 @@ void ChaosAfterUpdate()
     const bool blocked=Blocked(current) || !re4t::cfg->bChaosEnabled;
     const Point player=Read(current.player);
     const float radius=Bound(re4t::cfg->fChaosPulseRadius, 200, 6000, 2500);
+    bool meleeHit=false;
     for (auto& em : *current.manager)
     {
         auto it=enemies.find(&em);
         if (it==enemies.end() || !em.IsValid()) continue;
         auto& state=it->second;
-        if (state.id!=em.id_100 || state.index!=em.emListIndex_3A0) continue;
+        if (state.id!=em.id_100 || state.index!=em.emListIndex_3A0 || state.guid!=em.guid_F8) continue;
         present.insert(&em);
         state.rate.Restore(&em);
         if (blocked || !Supported(em))
@@ -273,14 +288,24 @@ void ChaosAfterUpdate()
             continue;
         }
         const auto& damage=em.m_DmgInfo_328;
-        const bool shotHit=re4t::cfg->bChaosLaunchShots && state.hpBefore>0 &&
+        const bool shotHit=(re4t::cfg->bChaosLaunchShots || DirectorForceLaunch()) && state.hpBefore>0 &&
             em.hp_324<state.hpBefore && weaponNo>=0 && int(damage.m_Wep_6)==weaponNo &&
             (damage.m_Flag_4!=0 || damage.m_Timer_5!=0);
+        if(re4t::cfg->bChaosAutoBowling && state.hpBefore>0 && em.hp_324<state.hpBefore &&
+            weaponNo<0 && FlagIsSet(current.globals->flags_STATUS_0_501C,uint32_t(Flags_STATUS::STA_PL_ACTION)) &&
+            FrontCone(player,Read(&em),current.player->ang_A0.y,900)) meleeHit=true;
         if (shotHit) Launch(&em, state, player, "shot");
         if (pulseThisFrame && em.hp_324>0 && Distance2(Read(&em), player)<=radius*radius)
             Launch(&em, state, player, "F7 pulse");
         if (state.flight.active) Place(&em, state.flight.Step(deltaSeconds));
     }
+    if(!blocked && re4t::cfg->bChaosBowling && (bowlingThisFrame || meleeHit))
+        for(auto& em:*current.manager) {
+            auto it=enemies.find(&em);
+            if(it!=enemies.end() && present.count(&em) && em.IsValid() && em.hp_324>0 && Supported(em) &&
+                FrontCone(player,Read(&em),current.player->ang_A0.y,Bound(re4t::cfg->fChaosBowlingRadius,200,2500,1200)))
+                Launch(&em,it->second,player,meleeHit ? "melee bowling" : "F9 bowling",1);
+        }
     for (auto it=enemies.begin(); it!=enemies.end(); )
         if (!present.count(it->first)) it=enemies.erase(it); else ++it;
     flyingCount=ActiveFlights();
@@ -291,16 +316,18 @@ void ChaosAfterUpdate()
 void ChaosDrawOverlay()
 {
     if (!re4t::cfg || !re4t::cfg->bChaosShowHUD) return;
-    char text[192];
-    std::snprintf(text, sizeof(text), "AIZA CHAOS %s | F6 ON/OFF | F7 Shockwave\nRun %.1fx | Fire %.1fx | Enemy %.1fx | Flying %u/16",
+    char text[256];
+    std::snprintf(text, sizeof(text), "AIZA CHAOS %s | F6 ON/OFF | F7 Shockwave | F9 Bowling\nRun %.1fx | Fire %.1fx | Enemy %.1fx | Flying %u/16",
         re4t::cfg->bChaosEnabled ? "ON" : "OFF",
         re4t::cfg->bChaosEnabled && re4t::cfg->bChaosFastRun ? re4t::cfg->fChaosRunSpeed : 1,
         re4t::cfg->bChaosEnabled && re4t::cfg->bChaosFastFire ? re4t::cfg->fChaosFireSpeed : 1,
         re4t::cfg->bChaosEnabled && re4t::cfg->bChaosEnemySpeed ? re4t::cfg->fChaosEnemySpeed : 1,
         flyingCount.load());
     auto* draw=ImGui::GetForegroundDrawList();
-    const ImVec2 size=ImGui::CalcTextSize(text);
+    const std::string extra=DirectorOverlay();
+    const std::string full=std::string(text)+(extra.empty() ? "" : "\n"+extra);
+    const ImVec2 size=ImGui::CalcTextSize(full.c_str());
     draw->AddRectFilled(ImVec2(14,62), ImVec2(26+size.x,76+size.y), IM_COL32(0,0,0,175), 5);
-    draw->AddText(ImVec2(20,68), IM_COL32(255,220,80,255), text);
+    draw->AddText(ImVec2(20,68), IM_COL32(255,220,80,255), full.c_str());
 }
 }

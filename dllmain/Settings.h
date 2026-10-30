@@ -263,6 +263,32 @@ public:
     float fChaosLaunchCooldown = 0.7f;
     float fChaosPulseRadius = 2500.0f;
 
+    // Aiza Director: native-template spawning, pending replacements and encounters.
+    bool bDirectorHeavyTemplates = false;
+    int iDirectorSeed = 12345;
+    uint64_t uDirectorSelectedTemplate = 0;
+    int iDirectorSpawnHP = 5000;
+    float fDirectorSpawnScale = 1.0f;
+    float fDirectorSpawnSpeed = 1.0f;
+    bool bDirectorReplace = false;
+    int iDirectorReplaceMode = 0;
+    bool bDirectorElites = false;
+    float fDirectorEliteChance = 20.0f;
+    float fDirectorEliteHP = 3.0f;
+    float fDirectorEliteScale = 1.8f;
+    float fDirectorEliteSpeed = 2.0f;
+    int iDirectorWaveStart = 3;
+    int iDirectorWaveGrowth = 2;
+    int iDirectorWaveLimit = 5;
+    float fDirectorWaveDelay = 2.0f;
+    float fDirectorWaveHPGrowth = 0.25f;
+    bool bDirectorTimed = false;
+    float fDirectorTimedInterval = 20.0f;
+    bool bDirectorTargetHUD = true;
+    bool bChaosBowling = false;
+    bool bChaosAutoBowling = false;
+    float fChaosBowlingRadius = 1200.0f;
+
 	// TRAINER_HOTKEYS
 	std::string sTrainerFocusUIKeyCombo = "F5";
 	std::string sTrainerNoclipKeyCombo = "";

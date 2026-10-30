@@ -94,6 +94,18 @@ int main()
     config.bChaosEnabled=false;
     clockTick+=16; aiza::ChaosBeforeUpdate(); aiza::ChaosAfterUpdate();
     for(auto& em:crowd) assert(em.pos_94.y==0);
+    // F9 starts a forward-only blast, then the normal trajectory advances it.
+    cEm front,behind;front.pos_94.z=500;behind.pos_94.z=-500;behind.emListIndex_3A0=1;
+    manager.items={&front,&behind};config.bChaosEnabled=true;config.bChaosBowling=true;
+    heldKeys=0;bio4::fireHeld=false;keyStates[VK_F9]=short(0x8000);
+    clockTick+=16;aiza::ChaosBeforeUpdate();aiza::ChaosAfterUpdate();
+    keyStates[VK_F9]=0;
+    clockTick+=16;aiza::ChaosBeforeUpdate();aiza::ChaosAfterUpdate();
+    assert(front.pos_94.y>0 && behind.pos_94.y==0);
+    config.bChaosEnabled=false;
+    clockTick+=16;aiza::ChaosBeforeUpdate();aiza::ChaosAfterUpdate();
+    assert(front.pos_94.y==0 && front.pos_94.z==500);
+    heldKeys=uint64_t(KEY_BTN::KEY_KAMAE);bio4::fireHeld=true;
     // F6 is edge-triggered and only accepted in the game foreground.
     keyStates[VK_F6]=short(0x8000);
     clockTick+=16; aiza::ChaosBeforeUpdate(); aiza::ChaosAfterUpdate(); assert(config.bChaosEnabled);
@@ -114,11 +126,11 @@ int main()
     std::cout << "Production Chaos lifecycle, shots, pulse, input, pause, despawn and restoration: PASS\n";
 }
 '''
-forward='namespace aiza {void ChaosBeforeUpdate();void ChaosAfterUpdate();bool ChaosWantsFireTrigger();}\n'
+forward='namespace aiza {void ChaosBeforeUpdate();void ChaosAfterUpdate();bool ChaosWantsFireTrigger();void DirectorBeforeUpdate() {} bool DirectorOwns(cEm*) {return false;}float DirectorFireFactor(){return 1;}float DirectorEnemyFactor(){return 1;}float DirectorEliteSpeed(cEm*){return 1;}int DirectorFlightMode(int x){return x;}bool DirectorForceLaunch(){return false;}std::string DirectorOverlay(){return "";}}\n'
 native='std::function<void(void*,void*)> nativeUpdate=[](void*,void*){};\nvoid cSceSys__scheduler(void* a,void* b) {nativeUpdate(a,b);}\nvoid* thisptr=nullptr;void* unused=nullptr;\n'
 with tempfile.TemporaryDirectory() as tmp:
     cpp=Path(tmp)/'chaos_runtime.cpp';binary=Path(tmp)/'chaos_runtime'
-    cpp.write_text('#include "tests/chaos_runtime_stubs.h"\n'+config+forward+source+native+scheduler+cases)
+    cpp.write_text('#include "tests/chaos_runtime_stubs.h"\n#include "dllmain/DirectorCore.h"\n'+config+forward+source+native+scheduler+cases)
     subprocess.run(['g++','-std=c++17','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-I',str(root),str(cpp),'-o',str(binary)],check=True)
     # LeakSanitizer cannot run under ptrace in the hosted executor.
     # Address/undefined-behavior checks remain enabled.

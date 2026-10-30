@@ -398,6 +398,47 @@ void ReadSettingsIni(std::wstring ini_path, setType type)
 		re4t::cfg->bTrainerPlayerSpeedOverride = ini.getBool("OVERRIDES", "EnablePlayerSpeedOverride", re4t::cfg->bTrainerPlayerSpeedOverride);
 		re4t::cfg->fTrainerPlayerSpeedOverride = ini.getFloat("OVERRIDES", "PlayerSpeedOverride", re4t::cfg->fTrainerPlayerSpeedOverride);
 
+        re4t::cfg->bDirectorHeavyTemplates=ini.getBool("AIZA_DIRECTOR", "HeavyTemplates", re4t::cfg->bDirectorHeavyTemplates);
+        re4t::cfg->iDirectorSeed=ini.getInt("AIZA_DIRECTOR", "Seed", re4t::cfg->iDirectorSeed);
+        re4t::cfg->iDirectorSpawnHP=ini.getInt("AIZA_DIRECTOR", "SpawnHP", re4t::cfg->iDirectorSpawnHP);
+        re4t::cfg->fDirectorSpawnScale=ini.getFloat("AIZA_DIRECTOR", "SpawnScale", re4t::cfg->fDirectorSpawnScale);
+        re4t::cfg->fDirectorSpawnSpeed=ini.getFloat("AIZA_DIRECTOR", "SpawnSpeed", re4t::cfg->fDirectorSpawnSpeed);
+        re4t::cfg->bDirectorReplace=ini.getBool("AIZA_DIRECTOR", "Replace", re4t::cfg->bDirectorReplace);
+        re4t::cfg->iDirectorReplaceMode=ini.getInt("AIZA_DIRECTOR", "ReplaceMode", re4t::cfg->iDirectorReplaceMode);
+        re4t::cfg->bDirectorElites=ini.getBool("AIZA_DIRECTOR", "Elites", re4t::cfg->bDirectorElites);
+        re4t::cfg->fDirectorEliteChance=ini.getFloat("AIZA_DIRECTOR", "EliteChance", re4t::cfg->fDirectorEliteChance);
+        re4t::cfg->fDirectorEliteHP=ini.getFloat("AIZA_DIRECTOR", "EliteHP", re4t::cfg->fDirectorEliteHP);
+        re4t::cfg->fDirectorEliteScale=ini.getFloat("AIZA_DIRECTOR", "EliteScale", re4t::cfg->fDirectorEliteScale);
+        re4t::cfg->fDirectorEliteSpeed=ini.getFloat("AIZA_DIRECTOR", "EliteSpeed", re4t::cfg->fDirectorEliteSpeed);
+        re4t::cfg->iDirectorWaveStart=ini.getInt("AIZA_DIRECTOR", "WaveStart", re4t::cfg->iDirectorWaveStart);
+        re4t::cfg->iDirectorWaveGrowth=ini.getInt("AIZA_DIRECTOR", "WaveGrowth", re4t::cfg->iDirectorWaveGrowth);
+        re4t::cfg->iDirectorWaveLimit=ini.getInt("AIZA_DIRECTOR", "WaveLimit", re4t::cfg->iDirectorWaveLimit);
+        re4t::cfg->fDirectorWaveDelay=ini.getFloat("AIZA_DIRECTOR", "WaveDelay", re4t::cfg->fDirectorWaveDelay);
+        re4t::cfg->fDirectorWaveHPGrowth=ini.getFloat("AIZA_DIRECTOR", "WaveHPGrowth", re4t::cfg->fDirectorWaveHPGrowth);
+        re4t::cfg->bDirectorTimed=ini.getBool("AIZA_DIRECTOR", "Timed", re4t::cfg->bDirectorTimed);
+        re4t::cfg->fDirectorTimedInterval=ini.getFloat("AIZA_DIRECTOR", "TimedInterval", re4t::cfg->fDirectorTimedInterval);
+        re4t::cfg->bDirectorTargetHUD=ini.getBool("AIZA_DIRECTOR", "TargetHUD", re4t::cfg->bDirectorTargetHUD);
+        re4t::cfg->bChaosBowling=ini.getBool("AIZA_DIRECTOR", "Bowling", re4t::cfg->bChaosBowling);
+        re4t::cfg->bChaosAutoBowling=ini.getBool("AIZA_DIRECTOR", "AutoBowling", re4t::cfg->bChaosAutoBowling);
+        re4t::cfg->fChaosBowlingRadius=ini.getFloat("AIZA_DIRECTOR", "BowlingRadius", re4t::cfg->fChaosBowlingRadius);
+        try {re4t::cfg->uDirectorSelectedTemplate=std::stoull(ini.getString("AIZA_DIRECTOR", "TemplateKey", "0"));}
+        catch (...) {re4t::cfg->uDirectorSelectedTemplate=0;}
+        re4t::cfg->iDirectorSpawnHP=std::clamp(re4t::cfg->iDirectorSpawnHP,100,32767);
+        re4t::cfg->iDirectorReplaceMode=std::clamp(re4t::cfg->iDirectorReplaceMode,0,2);
+        re4t::cfg->iDirectorWaveStart=std::clamp(re4t::cfg->iDirectorWaveStart,1,20);
+        re4t::cfg->iDirectorWaveGrowth=std::clamp(re4t::cfg->iDirectorWaveGrowth,0,10);
+        re4t::cfg->iDirectorWaveLimit=std::clamp(re4t::cfg->iDirectorWaveLimit,1,50);
+        re4t::cfg->fDirectorSpawnScale=aiza::Bound(re4t::cfg->fDirectorSpawnScale,0.5f,3.0f,1.0f);
+        re4t::cfg->fDirectorSpawnSpeed=aiza::Bound(re4t::cfg->fDirectorSpawnSpeed,0.2f,5.0f,1.0f);
+        re4t::cfg->fDirectorEliteChance=aiza::Bound(re4t::cfg->fDirectorEliteChance,0.0f,100.0f,20.0f);
+        re4t::cfg->fDirectorEliteHP=aiza::Bound(re4t::cfg->fDirectorEliteHP,1.0f,10.0f,3.0f);
+        re4t::cfg->fDirectorEliteScale=aiza::Bound(re4t::cfg->fDirectorEliteScale,1.0f,4.0f,1.8f);
+        re4t::cfg->fDirectorEliteSpeed=aiza::Bound(re4t::cfg->fDirectorEliteSpeed,1.0f,5.0f,2.0f);
+        re4t::cfg->fDirectorWaveDelay=aiza::Bound(re4t::cfg->fDirectorWaveDelay,0.0f,20.0f,2.0f);
+        re4t::cfg->fDirectorWaveHPGrowth=aiza::Bound(re4t::cfg->fDirectorWaveHPGrowth,0.0f,2.0f,0.25f);
+        re4t::cfg->fDirectorTimedInterval=aiza::Bound(re4t::cfg->fDirectorTimedInterval,5.0f,120.0f,20.0f);
+        re4t::cfg->fChaosBowlingRadius=aiza::Bound(re4t::cfg->fChaosBowlingRadius,200.0f,2500.0f,1200.0f);
+
         re4t::cfg->bChaosEnabled = ini.getBool("AIZA_CHAOS", "Enabled", re4t::cfg->bChaosEnabled);
         re4t::cfg->bChaosShowHUD = ini.getBool("AIZA_CHAOS", "ShowHUD", re4t::cfg->bChaosShowHUD);
         re4t::cfg->bChaosFastRun = ini.getBool("AIZA_CHAOS", "FastRun", re4t::cfg->bChaosFastRun);
@@ -864,6 +905,31 @@ void re4t_cfg::WriteSettings(bool trainerOnly)
 		ini.setString("OVERRIDES", "AdaCostume", std::string(sAdaCostumeNames[int(re4t::cfg->CostumeOverride.Ada)]));
 		ini.setBool("OVERRIDES", "OverrideDifficulty", re4t::cfg->bOverrideDifficulty);
 		ini.setString("OVERRIDES", "NewDifficulty", std::string(sGameDifficultyNames[int(re4t::cfg->NewDifficulty)]));
+
+        ini.setBool("AIZA_DIRECTOR", "HeavyTemplates", re4t::cfg->bDirectorHeavyTemplates);
+        ini.setInt("AIZA_DIRECTOR", "Seed", re4t::cfg->iDirectorSeed);
+        ini.setInt("AIZA_DIRECTOR", "SpawnHP", re4t::cfg->iDirectorSpawnHP);
+        ini.setFloat("AIZA_DIRECTOR", "SpawnScale", re4t::cfg->fDirectorSpawnScale);
+        ini.setFloat("AIZA_DIRECTOR", "SpawnSpeed", re4t::cfg->fDirectorSpawnSpeed);
+        ini.setBool("AIZA_DIRECTOR", "Replace", re4t::cfg->bDirectorReplace);
+        ini.setInt("AIZA_DIRECTOR", "ReplaceMode", re4t::cfg->iDirectorReplaceMode);
+        ini.setBool("AIZA_DIRECTOR", "Elites", re4t::cfg->bDirectorElites);
+        ini.setFloat("AIZA_DIRECTOR", "EliteChance", re4t::cfg->fDirectorEliteChance);
+        ini.setFloat("AIZA_DIRECTOR", "EliteHP", re4t::cfg->fDirectorEliteHP);
+        ini.setFloat("AIZA_DIRECTOR", "EliteScale", re4t::cfg->fDirectorEliteScale);
+        ini.setFloat("AIZA_DIRECTOR", "EliteSpeed", re4t::cfg->fDirectorEliteSpeed);
+        ini.setInt("AIZA_DIRECTOR", "WaveStart", re4t::cfg->iDirectorWaveStart);
+        ini.setInt("AIZA_DIRECTOR", "WaveGrowth", re4t::cfg->iDirectorWaveGrowth);
+        ini.setInt("AIZA_DIRECTOR", "WaveLimit", re4t::cfg->iDirectorWaveLimit);
+        ini.setFloat("AIZA_DIRECTOR", "WaveDelay", re4t::cfg->fDirectorWaveDelay);
+        ini.setFloat("AIZA_DIRECTOR", "WaveHPGrowth", re4t::cfg->fDirectorWaveHPGrowth);
+        ini.setBool("AIZA_DIRECTOR", "Timed", re4t::cfg->bDirectorTimed);
+        ini.setFloat("AIZA_DIRECTOR", "TimedInterval", re4t::cfg->fDirectorTimedInterval);
+        ini.setBool("AIZA_DIRECTOR", "TargetHUD", re4t::cfg->bDirectorTargetHUD);
+        ini.setBool("AIZA_DIRECTOR", "Bowling", re4t::cfg->bChaosBowling);
+        ini.setBool("AIZA_DIRECTOR", "AutoBowling", re4t::cfg->bChaosAutoBowling);
+        ini.setFloat("AIZA_DIRECTOR", "BowlingRadius", re4t::cfg->fChaosBowlingRadius);
+        ini.setString("AIZA_DIRECTOR", "TemplateKey", std::to_string(re4t::cfg->uDirectorSelectedTemplate));
 
         ini.setBool("AIZA_CHAOS", "Enabled", re4t::cfg->bChaosEnabled);
         ini.setBool("AIZA_CHAOS", "ShowHUD", re4t::cfg->bChaosShowHUD);

@@ -13,6 +13,7 @@
 #include "ChaosMath.h"
 #include "ChaosCore.h"
 #include "Chaos.h"
+#include "Director.h"
 #include <DirectXMath.h>
 
 int flagCategory = 0; // Flag editor category, matches with CategoryInfoIdx enum in Trainer.h
@@ -2198,6 +2199,7 @@ void Trainer_RenderUI(int columnCount)
                     if (ImGui::Button(presetNames[preset]))
                     {
                         chaos->bChaosEnabled=true;
+                        chaos->bChaosBowling=true;
                         chaos->bChaosFastRun=true; chaos->fChaosRunSpeed=5;
                         chaos->bChaosFastFire=true; chaos->fChaosFireSpeed=12;
                         chaos->bChaosInfiniteAmmo=true;
@@ -2256,6 +2258,106 @@ void Trainer_RenderUI(int columnCount)
                 ImGui::TextWrapped("F6 OFF returns active flights to their launch position. All flight styles return to that position when finished. Up to 16 enemies fly at once.");
                 ImGui::TextWrapped("Gameplay only: pauses during cutscenes, inventory, ladders and boats. Shot launches require matching weapon damage plus HP loss. Targets: selected ESL humanoids; other bosses and merchants are excluded.");
                 ImGui::TextWrapped("Speed boosts use native animation rates; this does not create new AI behavior. Extreme fire rates may skip native animation events. Start with a preset before increasing them.");
+            }
+
+            if ((OptionsFilter.PassFilter("Aiza Director spawn replace waves elite seed bowling timed target") && OptionsFilter.IsActive()) || !OptionsFilter.IsActive())
+            {
+                ImGui_ColumnSwitch();
+                ImGui::TextWrapped("Aiza Director - Enemies & Encounters");
+                ImGui_ItemSeparator();
+                auto* cfg=re4t::cfg;
+                auto state=aiza::DirectorSnapshot();
+                ImGui::TextWrapped("%s",state.status.c_str());
+                ImGui::Text("Added alive: %u | Tracked: %u/24 | Queued: %u",state.alive,state.owned,state.queued);
+                cfg->HasUnsavedChanges |= ImGui::Checkbox("Chaos master##Director", &cfg->bChaosEnabled);
+                auto toggle=[&](const char* label,bool* value) {cfg->HasUnsavedChanges |= ImGui::Checkbox(label,value);};
+                auto slider=[&](const char* label,float* value,float low,float high,const char* format) {
+                    cfg->HasUnsavedChanges |= ImGui::SliderFloat(label,value,low,high,format,ImGuiSliderFlags_AlwaysClamp);
+                };
+                cfg->HasUnsavedChanges |= ImGui::InputInt("Encounter seed",&cfg->iDirectorSeed);
+                ImGui::TextWrapped("Repeat the seed with the same room, available templates and request order. Already modified actors keep their current HP/size until reload.");
+                toggle("Target information on HUD (camera-cone candidate)",&cfg->bDirectorTargetHUD);
+                if(!state.target.empty()) ImGui::TextWrapped("%s",state.target.c_str());
+                toggle("Include experimental heavy templates in catalog",&cfg->bDirectorHeavyTemplates);
+                const char* selected="Select an available native template";
+                bool available=false;
+                for(const auto& entry:state.templates) if(entry.key==cfg->uDirectorSelectedTemplate) {
+                    selected=entry.label.c_str();available=entry.available;break;
+                }
+                if(ImGui::BeginCombo("Room enemy catalog",selected)) {
+                    for(const auto& entry:state.templates) {
+                        std::string label=entry.label+(entry.available ? "" : " [not available]");
+                        if(ImGui::Selectable(label.c_str(),entry.key==cfg->uDirectorSelectedTemplate)) {
+                            cfg->uDirectorSelectedTemplate=entry.key;cfg->HasUnsavedChanges=true;
+                        }
+                    }ImGui::EndCombo();
+                }
+                if(state.templates.empty()) ImGui::TextWrapped("Waiting for supported native enemies to initialize in this room. Unknown/unloaded models are not fabricated.");
+                if(ImGui::CollapsingHeader("Manual spawn",ImGuiTreeNodeFlags_DefaultOpen)) {
+                    ImGui::BeginDisabled(!cfg->bChaosEnabled);
+                    if(ImGui::Button("Mark Leon's current position as spawn point"))
+                        aiza::DirectorRequest(aiza::DirectorCommand::MarkPoint,state.epoch);
+                    ImGui::TextWrapped(state.marked ? "Point marked. Move away before spawning." : "Stand on a clear floor and mark a point first.");
+                    ImGui::TextWrapped(state.coordinatesVerified ? "Native spawn coordinates verified." : "Waiting for coordinate verification from native initialization; reload this room if needed.");
+                    cfg->HasUnsavedChanges |= ImGui::SliderInt("Additional enemy HP",&cfg->iDirectorSpawnHP,100,32767,"%d",ImGuiSliderFlags_AlwaysClamp);
+                    slider("Additional enemy size",&cfg->fDirectorSpawnScale,.5f,3,"%.1fx");
+                    slider("Additional enemy animation speed",&cfg->fDirectorSpawnSpeed,.2f,5,"%.1fx");
+                    ImGui::BeginDisabled(!available || !state.marked || !state.coordinatesVerified);
+                    if(ImGui::Button("Spawn 1")) aiza::DirectorRequest(aiza::DirectorCommand::Spawn,state.epoch,cfg->uDirectorSelectedTemplate,1);
+                    ImGui::SameLine();
+                    if(ImGui::Button("Spawn 3")) aiza::DirectorRequest(aiza::DirectorCommand::Spawn,state.epoch,cfg->uDirectorSelectedTemplate,3);
+                    ImGui::SameLine();
+                    if(ImGui::Button("Spawn 5")) aiza::DirectorRequest(aiza::DirectorCommand::Spawn,state.epoch,cfg->uDirectorSelectedTemplate,5);
+                    ImGui::EndDisabled();ImGui::EndDisabled();
+                    if(ImGui::Button("Clear only additional enemies")) aiza::DirectorRequest(aiza::DirectorCommand::ClearOwned,state.epoch);
+                    ImGui::TextWrapped("Creation is staggered. The catalog requires a matching native model witness in this room. No arbitrary ID or asset loader is used.");
+                }
+                if(ImGui::CollapsingHeader("Replace future normal spawns")) {
+                    ImGui::Text("Observed replacements this room: %u",state.replaced);
+                    toggle("Enable pending-spawn replacement",&cfg->bDirectorReplace);
+                    const char* modes[]={"Selected loaded humanoid","Seeded random loaded humanoids","Chainsaw template when available"};
+                    cfg->HasUnsavedChanges |= ImGui::Combo("Replacement mode",&cfg->iDirectorReplaceMode,modes,IM_ARRAYSIZE(modes));
+                    ImGui::TextWrapped("Only future ordinary humanoid ESL entries. Existing enemies and event routines are not replaced. Chainsaw mode waits for a compatible native template; it does not load missing models.");
+                }
+                if(ImGui::CollapsingHeader("Wave arena",ImGuiTreeNodeFlags_DefaultOpen)) {
+                    ImGui::Text("Wave: %u | %s",state.wave,state.waves ? "RUNNING" : "STOPPED");
+                    cfg->HasUnsavedChanges |= ImGui::SliderInt("First wave size",&cfg->iDirectorWaveStart,1,20);
+                    cfg->HasUnsavedChanges |= ImGui::SliderInt("Extra enemies per wave",&cfg->iDirectorWaveGrowth,0,10);
+                    cfg->HasUnsavedChanges |= ImGui::SliderInt("Number of waves",&cfg->iDirectorWaveLimit,1,50);
+                    slider("Break between waves",&cfg->fDirectorWaveDelay,0,20,"%.1f sec");
+                    slider("Extra HP factor per wave",&cfg->fDirectorWaveHPGrowth,0,2,"+%.2fx");
+                    ImGui::BeginDisabled(!cfg->bChaosEnabled || state.waves || !available || !state.marked || !state.coordinatesVerified);
+                    if(ImGui::Button("Start waves with selected template"))
+                        aiza::DirectorRequest(aiza::DirectorCommand::StartWaves,state.epoch,cfg->uDirectorSelectedTemplate);
+                    ImGui::EndDisabled();
+                    if(ImGui::Button("Stop waves")) aiza::DirectorRequest(aiza::DirectorCommand::StopWaves,state.epoch);
+                    ImGui::TextWrapped("Only added enemies count toward each wave. A native resource/pool failure stops the wave and reports why; no silent retries.");
+                }
+                if(ImGui::CollapsingHeader("Seeded elite enemies")) {
+                    toggle("Random elite enemies",&cfg->bDirectorElites);
+                    slider("Elite chance",&cfg->fDirectorEliteChance,0,100,"%.0f%%");
+                    slider("Elite HP",&cfg->fDirectorEliteHP,1,10,"%.1fx");
+                    slider("Elite size",&cfg->fDirectorEliteScale,1,4,"%.1fx");
+                    slider("Elite animation speed",&cfg->fDirectorEliteSpeed,1,5,"%.1fx");
+                    ImGui::TextWrapped("Applied once per discovered actor identity. HP/size persist until that actor despawns or the room reloads. Animation speed follows the toggle.");
+                }
+                if(ImGui::CollapsingHeader("Bowling & timed Chaos")) {
+                    toggle("Bowling blast (F9)",&cfg->bChaosBowling);
+                    toggle("Auto bowling on nearby melee-like damage (experimental)",&cfg->bChaosAutoBowling);
+                    slider("Bowling forward radius",&cfg->fChaosBowlingRadius,200,2500,"%.0f game units");
+                    ImGui::BeginDisabled(!cfg->bChaosEnabled || !cfg->bChaosBowling);
+                    if(ImGui::Button("Bowling blast now (F9)")) aiza::ChaosRequestBowling();
+                    ImGui::EndDisabled();
+                    ImGui::TextWrapped("Manual F9 uses a forward cone. Automatic mode infers melee from HP loss plus player-action state; it is not an exact kick-function hook.");
+                    toggle("Timed random events",&cfg->bDirectorTimed);
+                    slider("Event interval",&cfg->fDirectorTimedInterval,5,120,"%.0f sec");
+                    ImGui::TextWrapped("Temporary Rocket, Tornado, fast/slow enemies or BRRRT events. Saved slider values are preserved. Pauses with gameplay.");
+                    if(!state.timedEvent.empty()) ImGui::TextWrapped("Current event: %s",state.timedEvent.c_str());
+                    if(ImGui::Button("Enable encounter extras")) {
+                        cfg->bChaosEnabled=true;cfg->bChaosBowling=true;cfg->bDirectorTimed=true;
+                        cfg->bDirectorElites=true;cfg->HasUnsavedChanges=true;
+                    }
+                }
             }
 
             // Aiza Chaos uses the existing ESL initialization hooks.

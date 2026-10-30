@@ -5,12 +5,13 @@
 #include "Settings.h"
 #include "ChaosMath.h"
 #include "Chaos.h"
+#include "Director.h"
 #include "Utils.h"
 
 void SetEmListParamExtensions(cEm* em, EM_LIST* emData)
 {
     GLOBAL_WK* pG = GlobalPtr();
-    if (!pG || !em || !emData || !em->IsValid())
+    if (!pG || !emData || !aiza::DirectorLiveActor(em))
         return;
 
     aiza::ChaosOnSpawn(em);
@@ -23,6 +24,8 @@ void SetEmListParamExtensions(cEm* em, EM_LIST* emData)
     const auto end = reinterpret_cast<std::uintptr_t>(&pG->Em_list_5410[256]);
     if (address < begin || address >= end || (address - begin) % sizeof(EM_LIST) != 0)
         return;
+
+    aiza::DirectorObserveInit(em, emData);
 
     const bool authored = (emData->be_flag_0 & EM_BE_FLAG_MODEXP_SPEEDSCALE) != 0;
     const bool hasExtensions = authored &&
@@ -78,23 +81,39 @@ cEm* __cdecl EmSetEvent_Hook(EM_LIST* emData)
 	cEm* result = EmSetEvent(emData);
 	// TODO: check if result == errEm
 
-	SetEmListParamExtensions(result, emData);
-	return result;
+    if(aiza::DirectorLiveActor(result)) {
+        SetEmListParamExtensions(result, emData);
+        aiza::DirectorObserveReady(result, emData);
+    }
+    return result;
+}
+
+namespace aiza {
+bool DirectorNativeSpawnAvailable() {return EmSetEvent!=nullptr;}
+cEm* DirectorNativeSpawn(EM_LIST* data) {return EmSetEvent ? EmSetEvent(data) : nullptr;}
 }
 
 cEm* (__cdecl* EmSetFromList2)(unsigned int em_list_no, int a2);
 cEm* __cdecl EmSetFromList2_Hook(unsigned int em_list_no, int a2)
 {
-	cEm* result = EmSetFromList2(em_list_no, a2);
-	SetEmListParamExtensions(result, &GlobalPtr()->Em_list_5410[em_list_no]);
-
-	return result;
+    aiza::DirectorPreparePending();
+    cEm* result = EmSetFromList2(em_list_no, a2);
+    if(em_list_no<256 && GlobalPtr() && aiza::DirectorLiveActor(result)) {
+        auto* data=&GlobalPtr()->Em_list_5410[em_list_no];
+        SetEmListParamExtensions(result,data);
+        aiza::DirectorObserveReady(result,data);
+    }
+    return result;
 }
 
 void __fastcall EmSetFromList_Hook(cEm* em, uint32_t unused)
 {
-	SetEmListParamExtensions(em, &GlobalPtr()->Em_list_5410[em->emListIndex_3A0]);
-	em->move(); // code we patched to jump here
+    if(GlobalPtr() && aiza::DirectorLiveActor(em)) {
+        auto* data=&GlobalPtr()->Em_list_5410[em->emListIndex_3A0];
+        SetEmListParamExtensions(em,data);
+        em->move(); // code we patched to jump here
+        aiza::DirectorObserveReady(em,data);
+    }
 }
 
 void __declspec(naked) EmSetFromList_Hook_Trampoline()
