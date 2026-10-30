@@ -9,6 +9,7 @@
 #include "input.hpp"
 #include "Utils.h"
 #include "Trainer.h"
+#include "ChaosMath.h"
 
 const std::wstring sSettingOverridesPath = L"re4_tweaks\\setting_overrides\\";
 
@@ -395,6 +396,12 @@ void ReadSettingsIni(std::wstring ini_path, setType type)
 
 		re4t::cfg->bTrainerPlayerSpeedOverride = ini.getBool("OVERRIDES", "EnablePlayerSpeedOverride", re4t::cfg->bTrainerPlayerSpeedOverride);
 		re4t::cfg->fTrainerPlayerSpeedOverride = ini.getFloat("OVERRIDES", "PlayerSpeedOverride", re4t::cfg->fTrainerPlayerSpeedOverride);
+
+        re4t::cfg->bTrainerVillageSizeChaos = ini.getBool("AIZA_CHAOS", "VillageSizeChaos", re4t::cfg->bTrainerVillageSizeChaos);
+        re4t::cfg->fTrainerVillageSizeMin = aiza::ClampVillageScale(ini.getFloat("AIZA_CHAOS", "VillageSizeMin", re4t::cfg->fTrainerVillageSizeMin));
+        re4t::cfg->fTrainerVillageSizeMax = std::max(re4t::cfg->fTrainerVillageSizeMin,
+            aiza::ClampVillageScale(ini.getFloat("AIZA_CHAOS", "VillageSizeMax", re4t::cfg->fTrainerVillageSizeMax)));
+
 		re4t::cfg->bTrainerEnemyHPMultiplier = ini.getBool("OVERRIDES", "EnableEnemyHPMultiplier", re4t::cfg->bTrainerEnemyHPMultiplier);
 		re4t::cfg->fTrainerEnemyHPMultiplier = ini.getFloat("OVERRIDES", "EnemyHPMultiplier", re4t::cfg->fTrainerEnemyHPMultiplier);
 		re4t::cfg->fTrainerEnemyHPMultiplier = fmin(fmax(re4t::cfg->fTrainerEnemyHPMultiplier, 0.1f), 15.0f); // limit between 0.1 - 15
@@ -826,6 +833,11 @@ void re4t_cfg::WriteSettings(bool trainerOnly)
 		ini.setString("OVERRIDES", "AdaCostume", std::string(sAdaCostumeNames[int(re4t::cfg->CostumeOverride.Ada)]));
 		ini.setBool("OVERRIDES", "OverrideDifficulty", re4t::cfg->bOverrideDifficulty);
 		ini.setString("OVERRIDES", "NewDifficulty", std::string(sGameDifficultyNames[int(re4t::cfg->NewDifficulty)]));
+
+        ini.setBool("AIZA_CHAOS", "VillageSizeChaos", re4t::cfg->bTrainerVillageSizeChaos);
+        ini.setFloat("AIZA_CHAOS", "VillageSizeMin", re4t::cfg->fTrainerVillageSizeMin);
+        ini.setFloat("AIZA_CHAOS", "VillageSizeMax", re4t::cfg->fTrainerVillageSizeMax);
+
 		ini.setBool("OVERRIDES", "EnableEnemyHPMultiplier", re4t::cfg->bTrainerEnemyHPMultiplier);
 		ini.setFloat("OVERRIDES", "EnemyHPMultiplier", re4t::cfg->fTrainerEnemyHPMultiplier);
 		ini.setBool("OVERRIDES", "UseRandomHPMultiplier", re4t::cfg->bTrainerRandomHPMultiplier);

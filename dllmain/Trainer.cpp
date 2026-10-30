@@ -10,6 +10,7 @@
 #include "UI_DebugWindows.h"
 #include "UI_Utility.h"
 #include "Trainer.h"
+#include "ChaosMath.h"
 #include <DirectXMath.h>
 
 int flagCategory = 0; // Flag editor category, matches with CategoryInfoIdx enum in Trainer.h
@@ -869,8 +870,8 @@ void Trainer_Init()
 					else
 						multi = re4t::cfg->fTrainerEnemyHPMultiplier;
 
-					Em_ptr->hp_324 = (int16_t)(Em_ptr->hp_324 * multi);
-					Em_ptr->hp_max_326 = (int16_t)(Em_ptr->hp_max_326 * multi);
+					Em_ptr->hp_324 = aiza::ScaleEnemyHP(Em_ptr->hp_324, multi);
+					Em_ptr->hp_max_326 = aiza::ScaleEnemyHP(Em_ptr->hp_max_326, multi);
 				}
 			}
 		}; injector::MakeInline<EmSetFromList_hook>(pattern.count(1).get(0).get<uint32_t>(0), pattern.count(1).get(0).get<uint32_t>(7));
@@ -894,8 +895,8 @@ void Trainer_Init()
 					else
 						multi = re4t::cfg->fTrainerEnemyHPMultiplier;
 
-					Em_ptr->hp_324 = (int16_t)(Em_ptr->hp_324 * multi);
-					Em_ptr->hp_max_326 = (int16_t)(Em_ptr->hp_max_326 * multi);
+					Em_ptr->hp_324 = aiza::ScaleEnemyHP(Em_ptr->hp_324, multi);
+					Em_ptr->hp_max_326 = aiza::ScaleEnemyHP(Em_ptr->hp_max_326, multi);
 				}
 			}
 		}; injector::MakeInline<EmSetFromList2_hook>(pattern.count(1).get(0).get<uint32_t>(0), pattern.count(1).get(0).get<uint32_t>(7));
@@ -919,8 +920,8 @@ void Trainer_Init()
 					else
 						multi = re4t::cfg->fTrainerEnemyHPMultiplier;
 
-					Em_ptr->hp_324 = (int16_t)(Em_ptr->hp_324 * multi);
-					Em_ptr->hp_max_326 = (int16_t)(Em_ptr->hp_max_326 * multi);
+					Em_ptr->hp_324 = aiza::ScaleEnemyHP(Em_ptr->hp_324, multi);
+					Em_ptr->hp_max_326 = aiza::ScaleEnemyHP(Em_ptr->hp_max_326, multi);
 				}
 			}
 		}; injector::MakeInline<EmSetEvent_hook>(pattern.count(1).get(0).get<uint32_t>(0), pattern.count(1).get(0).get<uint32_t>(7));
@@ -2171,6 +2172,32 @@ void Trainer_RenderUI(int columnCount)
 				ImGui::RadioButton("Present", &AshleyStateOverride, AshleyState::Present);
 				ImGui::RadioButton("Not present", &AshleyStateOverride, AshleyState::NotPresent);
 			}
+
+            // Aiza Chaos uses the existing ESL initialization hooks.
+            if ((OptionsFilter.PassFilter("Aiza Chaos village random size") && OptionsFilter.IsActive()) || !OptionsFilter.IsActive())
+            {
+                ImGui_ColumnSwitch();
+                ImGui::TextWrapped("Aiza Chaos - Village Size");
+                ImGui_ItemSeparator();
+                re4t::cfg->HasUnsavedChanges |= ImGui::Checkbox("Random Ganado size (visual)", &re4t::cfg->bTrainerVillageSizeChaos);
+                ImGui::TextWrapped(re4t::cfg->bTrainerVillageSizeChaos ? "Status: ON for future spawns" : "Status: OFF for future spawns");
+                ImGui::BeginDisabled(!re4t::cfg->bTrainerVillageSizeChaos);
+                if (ImGui::SliderFloat("Smallest size", &re4t::cfg->fTrainerVillageSizeMin, 0.5f, 2.0f, "%.2fx", ImGuiSliderFlags_AlwaysClamp))
+                {
+                    re4t::cfg->fTrainerVillageSizeMin = aiza::ClampVillageScale(re4t::cfg->fTrainerVillageSizeMin);
+                    re4t::cfg->fTrainerVillageSizeMax = std::max(re4t::cfg->fTrainerVillageSizeMax, re4t::cfg->fTrainerVillageSizeMin);
+                    re4t::cfg->HasUnsavedChanges = true;
+                }
+                if (ImGui::SliderFloat("Largest size", &re4t::cfg->fTrainerVillageSizeMax, 0.5f, 2.0f, "%.2fx", ImGuiSliderFlags_AlwaysClamp))
+                {
+                    re4t::cfg->fTrainerVillageSizeMax = aiza::ClampVillageScale(re4t::cfg->fTrainerVillageSizeMax);
+                    re4t::cfg->fTrainerVillageSizeMin = std::min(re4t::cfg->fTrainerVillageSizeMin, re4t::cfg->fTrainerVillageSizeMax);
+                    re4t::cfg->HasUnsavedChanges = true;
+                }
+                ImGui::EndDisabled();
+                ImGui::TextWrapped("Village room 0101 only. Enable before entering the room or reload it to see the effect.");
+                ImGui::TextWrapped("OFF leaves existing enemies at their current size. Reload the room for normal sizes. Collision and attack reach remain unchanged.");
+            }
 
 			// Enemy HP multiplier
 			if ((OptionsFilter.PassFilter("Enemy HP multiplier") && OptionsFilter.IsActive()) || !OptionsFilter.IsActive())

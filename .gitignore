@@ -29,3 +29,7 @@ ipch/
 
 # Generated on compilation
 dllmain/gitparams.h
+
+# Local staged builds (never game executables or old project backups)
+/artifacts/
+/*BACKUP*/

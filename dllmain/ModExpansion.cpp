@@ -3,45 +3,70 @@
 #include "Patches.h"
 #include "Game.h"
 #include "Settings.h"
+#include "ChaosMath.h"
+#include "Utils.h"
 
 void SetEmListParamExtensions(cEm* em, EM_LIST* emData)
 {
-	// Game sometimes uses hardcoded stack-based EM_LIST to spawn certain enemies
-	// In those cases, 0xA & 0x1C usually are left untouched, resulting in random stack data being used
-	// To protect against that, we'll only allow param extensions from emData that came from pG->emList_5410
-	GLOBAL_WK* pG = GlobalPtr();
-	if (emData < pG->Em_list_5410 || emData >= &pG->Em_list_5410[256])
-		return;
+    GLOBAL_WK* pG = GlobalPtr();
+    if (!pG || !em || !emData || !em->IsValid())
+        return;
 
-	if ((emData->be_flag_0 & EM_BE_FLAG_MODEXP_SPEEDSCALE) != EM_BE_FLAG_MODEXP_SPEEDSCALE)
-		return;
+    // Event spawns can supply stack-based entries. Accept only aligned
+    // entries in the live ESL array; integer comparisons avoid unrelated
+    // pointer ordering. Never read extended fields from stack entries.
+    const auto address = reinterpret_cast<std::uintptr_t>(emData);
+    const auto begin = reinterpret_cast<std::uintptr_t>(&pG->Em_list_5410[0]);
+    const auto end = reinterpret_cast<std::uintptr_t>(&pG->Em_list_5410[256]);
+    if (address < begin || address >= end || (address - begin) % sizeof(EM_LIST) != 0)
+        return;
 
-	if (!emData->percentageMotionSpeed_1C && !emData->percentageScale_1E)
-		return;
+    const bool authored = (emData->be_flag_0 & EM_BE_FLAG_MODEXP_SPEEDSCALE) != 0;
+    const bool hasExtensions = authored &&
+        (emData->percentageMotionSpeed_1C || emData->percentageScale_1E);
+    const bool initializing = em->r_no_0_FC == uint8_t(cEm::Routine0::Init);
+    const bool randomSize = re4t::cfg && re4t::cfg->bTrainerVillageSizeChaos &&
+        !authored && initializing && em->IsSpawnedByESL() &&
+        &pG->Em_list_5410[em->emListIndex_3A0] == emData &&
+        em->id_100 == static_cast<uint8_t>(emData->id_1) &&
+        aiza::IsVillageSizeCandidate(emData->room_18, em->id_100, em->hp_324);
+    if (!hasExtensions && !randomSize)
+        return;
 
-	// let it run the cEm's EmXX_R0_init function before we apply changes
-	// (since that has a good chance of overwriting scale value)
-	if (em->r_no_0_FC == uint8_t(cEm::Routine0::Init))
-		em->move();
+    // Reuse the existing initialization/scale path. Only new objects in
+    // Init may receive random size, so another hook cannot compound it.
+    if (initializing)
+        em->move();
+    if (!em->IsValid() || (randomSize &&
+        (em->hp_324 <= 0 || em->r_no_0_FC != uint8_t(cEm::Routine0::Move))))
+        return;
 
-	if (emData->percentageMotionSpeed_1C)
-		em->Motion_1D8.Seq_speed_C0 = float(double(emData->percentageMotionSpeed_1C) / 100.0f);
+    if (hasExtensions && emData->percentageMotionSpeed_1C)
+        em->Motion_1D8.Seq_speed_C0 = float(double(emData->percentageMotionSpeed_1C) / 100.0f);
 
-	if (emData->percentageScale_1E)
-	{
-		auto scalePercent = float(double(emData->percentageScale_1E) / 100.0f);
-		em->scale_AC.x *= scalePercent;
-		em->scale_AC.y *= scalePercent;
-		em->scale_AC.z *= scalePercent;
+    float scalePercent = 1.0f;
+    if (hasExtensions && emData->percentageScale_1E)
+        scalePercent = float(double(emData->percentageScale_1E) / 100.0f);
+    else if (randomSize)
+    {
+        const float minScale = aiza::ClampVillageScale(re4t::cfg->fTrainerVillageSizeMin);
+        const float maxScale = std::max(minScale, aiza::ClampVillageScale(re4t::cfg->fTrainerVillageSizeMax));
+        scalePercent = GetRandomFloat(minScale, maxScale);
+        spd::log()->info("[Aiza Chaos] Village size: ESL {} id {:02X} scale {:.2f}x",
+            unsigned(em->emListIndex_3A0), unsigned(em->id_100), scalePercent);
+    }
+    else
+        return;
 
-		if (IsGanado(em->id_100))
-		{
-			// cEm10 holds a seperate scale value that it seems to grow/shrink the actual scale towards each frame
-			// make sure we update that as well
-			cEm10* em10 = (cEm10*)em;
-			em10->Scale_498 = em->scale_AC;
-		}
-	}
+    em->scale_AC.x *= scalePercent;
+    em->scale_AC.y *= scalePercent;
+    em->scale_AC.z *= scalePercent;
+    if (IsGanado(em->id_100))
+    {
+        // Native Ganado animation grows/shrinks the model toward Scale_498.
+        cEm10* em10 = (cEm10*)em;
+        em10->Scale_498 = em->scale_AC;
+    }
 }
 
 cEm* (__cdecl* EmSetEvent)(EM_LIST* emData);

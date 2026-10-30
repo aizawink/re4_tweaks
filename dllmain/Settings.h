@@ -236,6 +236,11 @@ public:
 	float fTrainerRandomHPMultiMin = 0.3f;
 	float fTrainerRandomHPMultiMax = 7.0f;
 
+	// Aiza Chaos: affects future ESL spawns in village room 0101 only.
+	bool bTrainerVillageSizeChaos = false;
+	float fTrainerVillageSizeMin = 0.75f;
+	float fTrainerVillageSizeMax = 1.35f;
+
 	// TRAINER_HOTKEYS
 	std::string sTrainerFocusUIKeyCombo = "F5";
 	std::string sTrainerNoclipKeyCombo = "";
