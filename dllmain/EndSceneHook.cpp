@@ -15,6 +15,7 @@
 #include "resource.h"
 #include "UI_DebugWindows.h"
 #include "Trainer.h"
+#include "Chaos.h"
 
 EndSceneHook esHook;
 
@@ -459,6 +460,7 @@ void EndSceneHook::EndScene_hook(LPDIRECT3DDEVICE9 pDevice)
 	ImGui::NewFrame();
 
 	Trainer_Update();
+	aiza::ChaosDrawOverlay();
 
 	// Show cfgMenu tip
 	if (!re4t::cfg->bDisableMenuTip && ((esHook._last_present_time - esHook._start_time) < std::chrono::seconds(10)))

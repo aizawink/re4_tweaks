@@ -1,0 +1,30 @@
+name: Chaos logic tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  logic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test HP bounds and village eligibility
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -fsanitize=undefined tests/chaos_math_test.cpp -o /tmp/chaos-test
+          /tmp/chaos-test
+      - name: Test production spawn-scale control flow
+        run: python3 tests/test_spawn_scale.py
+      - name: Test launch paths at different frame rates
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -fsanitize=undefined tests/chaos_flight_test.cpp -o /tmp/flight-test
+          /tmp/flight-test
+      - name: Test production Chaos lifecycle and memory access
+        run: python3 tests/test_chaos_runtime.py
+      - name: Test encounter math and bounded wave growth
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -fsanitize=undefined tests/director_core_test.cpp -o /tmp/director-test
+          /tmp/director-test
+      - name: Test production spawn director and ownership
+        run: python3 tests/test_director_runtime.py

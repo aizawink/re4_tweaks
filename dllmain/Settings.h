@@ -236,6 +236,59 @@ public:
 	float fTrainerRandomHPMultiMin = 0.3f;
 	float fTrainerRandomHPMultiMax = 7.0f;
 
+	// Aiza Chaos: affects future ESL spawns in village room 0101 only.
+	bool bTrainerVillageSizeChaos = false;
+	float fTrainerVillageSizeMin = 0.75f;
+	float fTrainerVillageSizeMax = 1.35f;
+
+
+    // Aiza Chaos runtime; everything defaults to OFF.
+    bool bChaosEnabled = false;
+    bool bChaosShowHUD = true;
+    bool bChaosFastRun = false;
+    float fChaosRunSpeed = 5.0f;
+    bool bChaosFastFire = false;
+    float fChaosFireSpeed = 12.0f;
+    bool bChaosInfiniteAmmo = false;
+    bool bChaosEnemySpeed = false;
+    float fChaosEnemySpeed = 2.0f;
+    bool bChaosThickHP = false;
+    float fChaosHPMultiplier = 5.0f;
+    bool bChaosLaunchShots = false;
+    bool bChaosIncludeHeavy = false;
+    int iChaosLaunchMode = 0;
+    float fChaosLaunchHeight = 6000.0f;
+    float fChaosFlightDuration = 3.0f;
+    float fChaosLaunchSpread = 1200.0f;
+    float fChaosLaunchCooldown = 0.7f;
+    float fChaosPulseRadius = 2500.0f;
+
+    // Aiza Director: native-template spawning, pending replacements and encounters.
+    bool bDirectorHeavyTemplates = false;
+    int iDirectorSeed = 12345;
+    uint64_t uDirectorSelectedTemplate = 0;
+    int iDirectorSpawnHP = 5000;
+    float fDirectorSpawnScale = 1.0f;
+    float fDirectorSpawnSpeed = 1.0f;
+    bool bDirectorReplace = false;
+    int iDirectorReplaceMode = 0;
+    bool bDirectorElites = false;
+    float fDirectorEliteChance = 20.0f;
+    float fDirectorEliteHP = 3.0f;
+    float fDirectorEliteScale = 1.8f;
+    float fDirectorEliteSpeed = 2.0f;
+    int iDirectorWaveStart = 3;
+    int iDirectorWaveGrowth = 2;
+    int iDirectorWaveLimit = 5;
+    float fDirectorWaveDelay = 2.0f;
+    float fDirectorWaveHPGrowth = 0.25f;
+    bool bDirectorTimed = false;
+    float fDirectorTimedInterval = 20.0f;
+    bool bDirectorTargetHUD = true;
+    bool bChaosBowling = false;
+    bool bChaosAutoBowling = false;
+    float fChaosBowlingRadius = 1200.0f;
+
 	// TRAINER_HOTKEYS
 	std::string sTrainerFocusUIKeyCombo = "F5";
 	std::string sTrainerNoclipKeyCombo = "";

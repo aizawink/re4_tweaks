@@ -10,6 +10,10 @@
 #include "UI_DebugWindows.h"
 #include "UI_Utility.h"
 #include "Trainer.h"
+#include "ChaosMath.h"
+#include "ChaosCore.h"
+#include "Chaos.h"
+#include "Director.h"
 #include <DirectXMath.h>
 
 int flagCategory = 0; // Flag editor category, matches with CategoryInfoIdx enum in Trainer.h
@@ -861,16 +865,18 @@ void Trainer_Init()
 				// Get pointer to cEm
 				cEm* Em_ptr = (cEm*)(regs.eax);
 
-				if (re4t::cfg->bTrainerEnemyHPMultiplier && IsEnemy(Em_ptr->id_100))
+				if ((re4t::cfg->bTrainerEnemyHPMultiplier || (re4t::cfg->bChaosEnabled && re4t::cfg->bChaosThickHP)) && IsEnemy(Em_ptr->id_100))
 				{
 					float multi = 0.0f;
-					if (re4t::cfg->bTrainerRandomHPMultiplier)
+					if (re4t::cfg->bChaosEnabled && re4t::cfg->bChaosThickHP)
+						multi = aiza::Bound(re4t::cfg->fChaosHPMultiplier, 0.1f, 15.0f, 5.0f);
+					else if (re4t::cfg->bTrainerRandomHPMultiplier)
 						multi = GetRandomFloat(re4t::cfg->fTrainerRandomHPMultiMin, re4t::cfg->fTrainerRandomHPMultiMax);
 					else
 						multi = re4t::cfg->fTrainerEnemyHPMultiplier;
 
-					Em_ptr->hp_324 = (int16_t)(Em_ptr->hp_324 * multi);
-					Em_ptr->hp_max_326 = (int16_t)(Em_ptr->hp_max_326 * multi);
+					Em_ptr->hp_324 = aiza::ScaleEnemyHP(Em_ptr->hp_324, multi);
+					Em_ptr->hp_max_326 = aiza::ScaleEnemyHP(Em_ptr->hp_max_326, multi);
 				}
 			}
 		}; injector::MakeInline<EmSetFromList_hook>(pattern.count(1).get(0).get<uint32_t>(0), pattern.count(1).get(0).get<uint32_t>(7));
@@ -886,16 +892,18 @@ void Trainer_Init()
 				// Get pointer to cEm
 				cEm* Em_ptr = (cEm*)(regs.esi);
 
-				if (re4t::cfg->bTrainerEnemyHPMultiplier && IsEnemy(Em_ptr->id_100))
+				if ((re4t::cfg->bTrainerEnemyHPMultiplier || (re4t::cfg->bChaosEnabled && re4t::cfg->bChaosThickHP)) && IsEnemy(Em_ptr->id_100))
 				{
 					float multi = 0.0f;
-					if (re4t::cfg->bTrainerRandomHPMultiplier)
+					if (re4t::cfg->bChaosEnabled && re4t::cfg->bChaosThickHP)
+						multi = aiza::Bound(re4t::cfg->fChaosHPMultiplier, 0.1f, 15.0f, 5.0f);
+					else if (re4t::cfg->bTrainerRandomHPMultiplier)
 						multi = GetRandomFloat(re4t::cfg->fTrainerRandomHPMultiMin, re4t::cfg->fTrainerRandomHPMultiMax);
 					else
 						multi = re4t::cfg->fTrainerEnemyHPMultiplier;
 
-					Em_ptr->hp_324 = (int16_t)(Em_ptr->hp_324 * multi);
-					Em_ptr->hp_max_326 = (int16_t)(Em_ptr->hp_max_326 * multi);
+					Em_ptr->hp_324 = aiza::ScaleEnemyHP(Em_ptr->hp_324, multi);
+					Em_ptr->hp_max_326 = aiza::ScaleEnemyHP(Em_ptr->hp_max_326, multi);
 				}
 			}
 		}; injector::MakeInline<EmSetFromList2_hook>(pattern.count(1).get(0).get<uint32_t>(0), pattern.count(1).get(0).get<uint32_t>(7));
@@ -911,16 +919,18 @@ void Trainer_Init()
 				// Get pointer to cEm
 				cEm* Em_ptr = (cEm*)(regs.esi);
 
-				if (re4t::cfg->bTrainerEnemyHPMultiplier && IsEnemy(Em_ptr->id_100))
+				if ((re4t::cfg->bTrainerEnemyHPMultiplier || (re4t::cfg->bChaosEnabled && re4t::cfg->bChaosThickHP)) && IsEnemy(Em_ptr->id_100))
 				{
 					float multi = 0.0f;
-					if (re4t::cfg->bTrainerRandomHPMultiplier)
+					if (re4t::cfg->bChaosEnabled && re4t::cfg->bChaosThickHP)
+						multi = aiza::Bound(re4t::cfg->fChaosHPMultiplier, 0.1f, 15.0f, 5.0f);
+					else if (re4t::cfg->bTrainerRandomHPMultiplier)
 						multi = GetRandomFloat(re4t::cfg->fTrainerRandomHPMultiMin, re4t::cfg->fTrainerRandomHPMultiMax);
 					else
 						multi = re4t::cfg->fTrainerEnemyHPMultiplier;
 
-					Em_ptr->hp_324 = (int16_t)(Em_ptr->hp_324 * multi);
-					Em_ptr->hp_max_326 = (int16_t)(Em_ptr->hp_max_326 * multi);
+					Em_ptr->hp_324 = aiza::ScaleEnemyHP(Em_ptr->hp_324, multi);
+					Em_ptr->hp_max_326 = aiza::ScaleEnemyHP(Em_ptr->hp_max_326, multi);
 				}
 			}
 		}; injector::MakeInline<EmSetEvent_hook>(pattern.count(1).get(0).get<uint32_t>(0), pattern.count(1).get(0).get<uint32_t>(7));
@@ -2171,6 +2181,210 @@ void Trainer_RenderUI(int columnCount)
 				ImGui::RadioButton("Present", &AshleyStateOverride, AshleyState::Present);
 				ImGui::RadioButton("Not present", &AshleyStateOverride, AshleyState::NotPresent);
 			}
+
+            if ((OptionsFilter.PassFilter("Aiza Chaos speed BRRRT launch rocket tornado shockwave") && OptionsFilter.IsActive()) || !OptionsFilter.IsActive())
+            {
+                ImGui_ColumnSwitch();
+                ImGui::TextWrapped("Aiza Chaos - Content Mode");
+                ImGui_ItemSeparator();
+                auto* chaos=re4t::cfg;
+                chaos->HasUnsavedChanges |= ImGui::Checkbox("Chaos master (F6)", &chaos->bChaosEnabled);
+                ImGui::TextWrapped(chaos->bChaosEnabled ? "Status: ON" : "Status: OFF");
+                chaos->HasUnsavedChanges |= ImGui::Checkbox("Show Chaos HUD", &chaos->bChaosShowHUD);
+
+                // Presets are explicit actions, never enabled on first load.
+                static const char* presetNames[]={"BRRRT Content", "Space Program", "Tornado Party"};
+                for (int preset=0; preset<3; ++preset)
+                {
+                    if (ImGui::Button(presetNames[preset]))
+                    {
+                        chaos->bChaosEnabled=true;
+                        chaos->bChaosBowling=true;
+                        chaos->bChaosFastRun=true; chaos->fChaosRunSpeed=5;
+                        chaos->bChaosFastFire=true; chaos->fChaosFireSpeed=12;
+                        chaos->bChaosInfiniteAmmo=true;
+                        chaos->bChaosEnemySpeed=true; chaos->fChaosEnemySpeed=2;
+                        chaos->bChaosThickHP=true; chaos->fChaosHPMultiplier=5;
+                        chaos->bChaosLaunchShots=true; chaos->bChaosIncludeHeavy=false;
+                        chaos->iChaosLaunchMode=preset;
+                        // BRRRT uses boomerang; Space Program uses straight rockets.
+                        if (preset==0) chaos->iChaosLaunchMode=1;
+                        if (preset==1) chaos->iChaosLaunchMode=0;
+                        chaos->fChaosLaunchHeight=preset==1 ? 18000.0f : 6000.0f;
+                        chaos->fChaosFlightDuration=preset==1 ? 5.0f : 3.0f;
+                        chaos->fChaosLaunchSpread=preset==2 ? 1800.0f : 1200.0f;
+                        chaos->fChaosLaunchCooldown=0.7f; chaos->fChaosPulseRadius=2500;
+                        chaos->bTrainerVillageSizeChaos=true;
+                        chaos->fTrainerVillageSizeMin=0.5f; chaos->fTrainerVillageSizeMax=2;
+                        chaos->HasUnsavedChanges=true;
+                    }
+                }
+                ImGui::TextWrapped("Presets activate Chaos. Thick HP and random size affect new spawns; reload the room to apply them.");
+                ImGui::BeginDisabled(!chaos->bChaosEnabled);
+                auto toggle=[&](const char* name, bool* value) {
+                    chaos->HasUnsavedChanges |= ImGui::Checkbox(name, value);
+                };
+                auto slider=[&](const char* name, float* value, float low, float high, const char* format) {
+                    chaos->HasUnsavedChanges |= ImGui::SliderFloat(name, value, low, high, format, ImGuiSliderFlags_AlwaysClamp);
+                };
+                toggle("Fast run (hold Run + direction)", &chaos->bChaosFastRun);
+                ImGui::BeginDisabled(!chaos->bChaosFastRun);
+                slider("Run multiplier", &chaos->fChaosRunSpeed, 1, 15, "%.1fx");
+                ImGui::EndDisabled();
+                toggle("BRRRT (hold Aim + Fire)", &chaos->bChaosFastFire);
+                ImGui::BeginDisabled(!chaos->bChaosFastFire);
+                slider("Fire animation multiplier", &chaos->fChaosFireSpeed, 1, 30, "%.1fx");
+                ImGui::EndDisabled();
+                toggle("Infinite ammo during Chaos", &chaos->bChaosInfiniteAmmo);
+                toggle("Fast enemy animations", &chaos->bChaosEnemySpeed);
+                ImGui::BeginDisabled(!chaos->bChaosEnemySpeed);
+                slider("Enemy animation multiplier", &chaos->fChaosEnemySpeed, 0.2f, 10, "%.1fx");
+                ImGui::EndDisabled();
+                toggle("Thick HP on new spawns", &chaos->bChaosThickHP);
+                ImGui::BeginDisabled(!chaos->bChaosThickHP);
+                slider("Chaos HP multiplier", &chaos->fChaosHPMultiplier, 0.1f, 15, "%.1fx");
+                ImGui::EndDisabled();
+                toggle("Launch enemies hit by shots", &chaos->bChaosLaunchShots);
+                toggle("Also launch El Gigante (experimental)", &chaos->bChaosIncludeHeavy);
+                const char* modes[]={"Rocket", "Boomerang", "Tornado"};
+                chaos->HasUnsavedChanges |= ImGui::Combo("Flight style", &chaos->iChaosLaunchMode, modes, IM_ARRAYSIZE(modes));
+                slider("Launch height (game units)", &chaos->fChaosLaunchHeight, 200, 30000, "%.0f");
+                slider("Flight duration", &chaos->fChaosFlightDuration, 0.5f, 8, "%.1f sec");
+                slider("Boomerang / Tornado spread", &chaos->fChaosLaunchSpread, 0, 4000, "%.0f");
+                slider("Launch cooldown per enemy", &chaos->fChaosLaunchCooldown, 0.2f, 5, "%.1f sec");
+                slider("Shockwave radius (game units)", &chaos->fChaosPulseRadius, 200, 6000, "%.0f");
+                if (ImGui::Button("Launch nearby enemies now (F7)")) aiza::ChaosRequestPulse();
+                ImGui::EndDisabled();
+                ImGui::TextWrapped("F6 OFF returns active flights to their launch position. All flight styles return to that position when finished. Up to 16 enemies fly at once.");
+                ImGui::TextWrapped("Gameplay only: pauses during cutscenes, inventory, ladders and boats. Shot launches require matching weapon damage plus HP loss. Targets: selected ESL humanoids; other bosses and merchants are excluded.");
+                ImGui::TextWrapped("Speed boosts use native animation rates; this does not create new AI behavior. Extreme fire rates may skip native animation events. Start with a preset before increasing them.");
+            }
+
+            if ((OptionsFilter.PassFilter("Aiza Director spawn replace waves elite seed bowling timed target") && OptionsFilter.IsActive()) || !OptionsFilter.IsActive())
+            {
+                ImGui_ColumnSwitch();
+                ImGui::TextWrapped("Aiza Director - Enemies & Encounters");
+                ImGui_ItemSeparator();
+                auto* cfg=re4t::cfg;
+                auto state=aiza::DirectorSnapshot();
+                ImGui::TextWrapped("%s",state.status.c_str());
+                ImGui::Text("Added alive: %u | Tracked: %u/24 | Queued: %u",state.alive,state.owned,state.queued);
+                cfg->HasUnsavedChanges |= ImGui::Checkbox("Chaos master##Director", &cfg->bChaosEnabled);
+                auto toggle=[&](const char* label,bool* value) {cfg->HasUnsavedChanges |= ImGui::Checkbox(label,value);};
+                auto slider=[&](const char* label,float* value,float low,float high,const char* format) {
+                    cfg->HasUnsavedChanges |= ImGui::SliderFloat(label,value,low,high,format,ImGuiSliderFlags_AlwaysClamp);
+                };
+                cfg->HasUnsavedChanges |= ImGui::InputInt("Encounter seed",&cfg->iDirectorSeed);
+                ImGui::TextWrapped("Repeat the seed with the same room, available templates and request order. Already modified actors keep their current HP/size until reload.");
+                toggle("Target information on HUD (camera-cone candidate)",&cfg->bDirectorTargetHUD);
+                if(!state.target.empty()) ImGui::TextWrapped("%s",state.target.c_str());
+                toggle("Include experimental heavy templates in catalog",&cfg->bDirectorHeavyTemplates);
+                const char* selected="Select an available native template";
+                bool available=false;
+                for(const auto& entry:state.templates) if(entry.key==cfg->uDirectorSelectedTemplate) {
+                    selected=entry.label.c_str();available=entry.available;break;
+                }
+                if(ImGui::BeginCombo("Room enemy catalog",selected)) {
+                    for(const auto& entry:state.templates) {
+                        std::string label=entry.label+(entry.available ? "" : " [not available]");
+                        if(ImGui::Selectable(label.c_str(),entry.key==cfg->uDirectorSelectedTemplate)) {
+                            cfg->uDirectorSelectedTemplate=entry.key;cfg->HasUnsavedChanges=true;
+                        }
+                    }ImGui::EndCombo();
+                }
+                if(state.templates.empty()) ImGui::TextWrapped("Waiting for supported native enemies to initialize in this room. Unknown/unloaded models are not fabricated.");
+                if(ImGui::CollapsingHeader("Manual spawn",ImGuiTreeNodeFlags_DefaultOpen)) {
+                    ImGui::BeginDisabled(!cfg->bChaosEnabled);
+                    if(ImGui::Button("Mark Leon's current position as spawn point"))
+                        aiza::DirectorRequest(aiza::DirectorCommand::MarkPoint,state.epoch);
+                    ImGui::TextWrapped(state.marked ? "Point marked. Move away before spawning." : "Stand on a clear floor and mark a point first.");
+                    ImGui::TextWrapped(state.coordinatesVerified ? "Native spawn coordinates verified." : "Waiting for coordinate verification from native initialization; reload this room if needed.");
+                    cfg->HasUnsavedChanges |= ImGui::SliderInt("Additional enemy HP",&cfg->iDirectorSpawnHP,100,32767,"%d",ImGuiSliderFlags_AlwaysClamp);
+                    slider("Additional enemy size",&cfg->fDirectorSpawnScale,.5f,3,"%.1fx");
+                    slider("Additional enemy animation speed",&cfg->fDirectorSpawnSpeed,.2f,5,"%.1fx");
+                    ImGui::BeginDisabled(!available || !state.marked || !state.coordinatesVerified);
+                    if(ImGui::Button("Spawn 1")) aiza::DirectorRequest(aiza::DirectorCommand::Spawn,state.epoch,cfg->uDirectorSelectedTemplate,1);
+                    ImGui::SameLine();
+                    if(ImGui::Button("Spawn 3")) aiza::DirectorRequest(aiza::DirectorCommand::Spawn,state.epoch,cfg->uDirectorSelectedTemplate,3);
+                    ImGui::SameLine();
+                    if(ImGui::Button("Spawn 5")) aiza::DirectorRequest(aiza::DirectorCommand::Spawn,state.epoch,cfg->uDirectorSelectedTemplate,5);
+                    ImGui::EndDisabled();ImGui::EndDisabled();
+                    if(ImGui::Button("Clear only additional enemies")) aiza::DirectorRequest(aiza::DirectorCommand::ClearOwned,state.epoch);
+                    ImGui::TextWrapped("Creation is staggered. The catalog requires a matching native model witness in this room. No arbitrary ID or asset loader is used.");
+                }
+                if(ImGui::CollapsingHeader("Replace future normal spawns")) {
+                    ImGui::Text("Observed replacements this room: %u",state.replaced);
+                    toggle("Enable pending-spawn replacement",&cfg->bDirectorReplace);
+                    const char* modes[]={"Selected loaded humanoid","Seeded random loaded humanoids","Chainsaw template when available"};
+                    cfg->HasUnsavedChanges |= ImGui::Combo("Replacement mode",&cfg->iDirectorReplaceMode,modes,IM_ARRAYSIZE(modes));
+                    ImGui::TextWrapped("Only future ordinary humanoid ESL entries. Existing enemies and event routines are not replaced. Chainsaw mode waits for a compatible native template; it does not load missing models.");
+                }
+                if(ImGui::CollapsingHeader("Wave arena",ImGuiTreeNodeFlags_DefaultOpen)) {
+                    ImGui::Text("Wave: %u | %s",state.wave,state.waves ? "RUNNING" : "STOPPED");
+                    cfg->HasUnsavedChanges |= ImGui::SliderInt("First wave size",&cfg->iDirectorWaveStart,1,20);
+                    cfg->HasUnsavedChanges |= ImGui::SliderInt("Extra enemies per wave",&cfg->iDirectorWaveGrowth,0,10);
+                    cfg->HasUnsavedChanges |= ImGui::SliderInt("Number of waves",&cfg->iDirectorWaveLimit,1,50);
+                    slider("Break between waves",&cfg->fDirectorWaveDelay,0,20,"%.1f sec");
+                    slider("Extra HP factor per wave",&cfg->fDirectorWaveHPGrowth,0,2,"+%.2fx");
+                    ImGui::BeginDisabled(!cfg->bChaosEnabled || state.waves || !available || !state.marked || !state.coordinatesVerified);
+                    if(ImGui::Button("Start waves with selected template"))
+                        aiza::DirectorRequest(aiza::DirectorCommand::StartWaves,state.epoch,cfg->uDirectorSelectedTemplate);
+                    ImGui::EndDisabled();
+                    if(ImGui::Button("Stop waves")) aiza::DirectorRequest(aiza::DirectorCommand::StopWaves,state.epoch);
+                    ImGui::TextWrapped("Only added enemies count toward each wave. A native resource/pool failure stops the wave and reports why; no silent retries.");
+                }
+                if(ImGui::CollapsingHeader("Seeded elite enemies")) {
+                    toggle("Random elite enemies",&cfg->bDirectorElites);
+                    slider("Elite chance",&cfg->fDirectorEliteChance,0,100,"%.0f%%");
+                    slider("Elite HP",&cfg->fDirectorEliteHP,1,10,"%.1fx");
+                    slider("Elite size",&cfg->fDirectorEliteScale,1,4,"%.1fx");
+                    slider("Elite animation speed",&cfg->fDirectorEliteSpeed,1,5,"%.1fx");
+                    ImGui::TextWrapped("Applied once per discovered actor identity. HP/size persist until that actor despawns or the room reloads. Animation speed follows the toggle.");
+                }
+                if(ImGui::CollapsingHeader("Bowling & timed Chaos")) {
+                    toggle("Bowling blast (F9)",&cfg->bChaosBowling);
+                    toggle("Auto bowling on nearby melee-like damage (experimental)",&cfg->bChaosAutoBowling);
+                    slider("Bowling forward radius",&cfg->fChaosBowlingRadius,200,2500,"%.0f game units");
+                    ImGui::BeginDisabled(!cfg->bChaosEnabled || !cfg->bChaosBowling);
+                    if(ImGui::Button("Bowling blast now (F9)")) aiza::ChaosRequestBowling();
+                    ImGui::EndDisabled();
+                    ImGui::TextWrapped("Manual F9 uses a forward cone. Automatic mode infers melee from HP loss plus player-action state; it is not an exact kick-function hook.");
+                    toggle("Timed random events",&cfg->bDirectorTimed);
+                    slider("Event interval",&cfg->fDirectorTimedInterval,5,120,"%.0f sec");
+                    ImGui::TextWrapped("Temporary Rocket, Tornado, fast/slow enemies or BRRRT events. Saved slider values are preserved. Pauses with gameplay.");
+                    if(!state.timedEvent.empty()) ImGui::TextWrapped("Current event: %s",state.timedEvent.c_str());
+                    if(ImGui::Button("Enable encounter extras")) {
+                        cfg->bChaosEnabled=true;cfg->bChaosBowling=true;cfg->bDirectorTimed=true;
+                        cfg->bDirectorElites=true;cfg->HasUnsavedChanges=true;
+                    }
+                }
+            }
+
+            // Aiza Chaos uses the existing ESL initialization hooks.
+            if ((OptionsFilter.PassFilter("Aiza Chaos village random size") && OptionsFilter.IsActive()) || !OptionsFilter.IsActive())
+            {
+                ImGui_ColumnSwitch();
+                ImGui::TextWrapped("Aiza Chaos - Village Size");
+                ImGui_ItemSeparator();
+                re4t::cfg->HasUnsavedChanges |= ImGui::Checkbox("Random Ganado size (visual)", &re4t::cfg->bTrainerVillageSizeChaos);
+                ImGui::TextWrapped(re4t::cfg->bTrainerVillageSizeChaos ? "Size selected; requires Chaos master ON" : "Status: OFF for future spawns");
+                ImGui::BeginDisabled(!re4t::cfg->bChaosEnabled || !re4t::cfg->bTrainerVillageSizeChaos);
+                if (ImGui::SliderFloat("Smallest size", &re4t::cfg->fTrainerVillageSizeMin, 0.5f, 2.0f, "%.2fx", ImGuiSliderFlags_AlwaysClamp))
+                {
+                    re4t::cfg->fTrainerVillageSizeMin = aiza::ClampVillageScale(re4t::cfg->fTrainerVillageSizeMin);
+                    re4t::cfg->fTrainerVillageSizeMax = std::max(re4t::cfg->fTrainerVillageSizeMax, re4t::cfg->fTrainerVillageSizeMin);
+                    re4t::cfg->HasUnsavedChanges = true;
+                }
+                if (ImGui::SliderFloat("Largest size", &re4t::cfg->fTrainerVillageSizeMax, 0.5f, 2.0f, "%.2fx", ImGuiSliderFlags_AlwaysClamp))
+                {
+                    re4t::cfg->fTrainerVillageSizeMax = aiza::ClampVillageScale(re4t::cfg->fTrainerVillageSizeMax);
+                    re4t::cfg->fTrainerVillageSizeMin = std::min(re4t::cfg->fTrainerVillageSizeMin, re4t::cfg->fTrainerVillageSizeMax);
+                    re4t::cfg->HasUnsavedChanges = true;
+                }
+                ImGui::EndDisabled();
+                ImGui::TextWrapped("Village room 0101 only. Enable before entering the room or reload it to see the effect.");
+                ImGui::TextWrapped("OFF leaves existing enemies at their current size. Reload the room for normal sizes. Collision and attack reach remain unchanged.");
+            }
 
 			// Enemy HP multiplier
 			if ((OptionsFilter.PassFilter("Enemy HP multiplier") && OptionsFilter.IsActive()) || !OptionsFilter.IsActive())
